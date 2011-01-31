@@ -8,96 +8,78 @@
 
 module GameState where
 
-import Control.Monad
 import Graphics.UI.GLUT
 import Data.IORef
+import GameLogic
 
 pixelsPerSquare :: (Num a) => a
 pixelsPerSquare = 50
 
-class Movable a where
-    getCoord :: a -> IO (GLint, GLint)
-    setCoord :: a -> (GLint, GLint) -> IO ()
-    getLocation :: a -> IO (GLfloat, GLfloat)
-    facing :: a -> IORef Orientation
-
-instance Movable PlayerState where
-    getCoord player = do
-        x <- liftM toGrid $ (get . xPos) player
-        y <- liftM toGrid $ (get . yPos) player
-        return (x,y)
-      where 
-        toGrid z = floor (z/pixelsPerSquare)
-
-    setCoord player (x,y) = do
-        --note: +0.5 will center the player on that grid tile.
-        xPos player $= pixelsPerSquare * ( fromIntegral x + 0.5 )
-        yPos player $= pixelsPerSquare * ( fromIntegral y + 0.5 )
-
-    getLocation player = do
-        x <- (get . xPos) player
-        y <- (get . yPos) player
-        return (x,y)
-
-    facing = orientation
-
-
 --GameState: the collection of all states of the game
 --      including keyboard, player, and world.
-data GameState = GameState { player :: PlayerState
-                           , keyboard :: KeyboardState
+data GameState = GameState { player :: IORef MObject
+                           , blocks :: IORef [MObject]
+                           , keyboard :: IORef Keyboard
                            }
 
---PlayerState: includes information like position, orientation, etc.
-data PlayerState = PlayerState {xPos, yPos :: IORef GLfloat, orientation :: IORef Orientation}
+--MObject: Mobile Objects. Type includes information like position, orientation, etc.
+data MObject = Player { xPos :: GLdouble 
+                      , yPos :: GLdouble 
+                      , orientation :: Orientation 
+                      , reflected :: Bool 
+                      } |
+               Block { xPos :: GLdouble 
+                     , yPos :: GLdouble 
+                     , orientation :: Orientation 
+                     , reflected :: Bool 
+                     }
 
-
---KeyboardState: indicates which keys are pressed and which are not.
---      True -> Pressed
-data KeyboardState = KeyboardState {wKey, sKey, aKey, dKey, left, left', right, right' :: IORef KeyState}
-
---an object's orientation
-data Orientation = North
-                 | Northwest
-                 | West
-                 | Southwest
-                 | South
-                 | Southeast
-                 | East
-                 | Northeast
-             deriving Eq
+--Keyboard: indicates which keys are pressed and which are not.
+data Keyboard = Keyboard { wKey
+                         , sKey
+                         , aKey
+                         , dKey
+                         , qKey
+                         , qKey'
+                         , eKey
+                         , eKey'
+                         , space
+                         , space' :: KeyState
+                         }
 
 --creates a new GameState structure with predetermined initial values
 initState :: IO GameState
 initState = do
-    w     <- newIORef Up
-    s     <- newIORef Up
-    a     <- newIORef Up
-    d     <- newIORef Up
-    lft   <- newIORef Up
-    lft'  <- newIORef Up
-    rght  <- newIORef Up
-    rght' <- newIORef Up
-    x     <- newIORef 200
-    y     <- newIORef 200
-    or    <- newIORef North
-    let ks = KeyboardState 
-            { wKey   = w
-            , sKey   = s
-            , aKey   = a
-            , dKey   = d
-            , left   = lft
-            , left'  = lft'
-            , right  = rght
-            , right' = rght'
+    let k = Keyboard 
+            { wKey   = Up
+            , sKey   = Up
+            , aKey   = Up
+            , dKey   = Up
+            , qKey   = Up
+            , qKey'  = Up
+            , eKey   = Up
+            , eKey'  = Up
+            , space  = Up
+            , space' = Up
             }
-        ps = PlayerState
-            { xPos = x
-            , yPos = y
-            , orientation = or
+        p = Player
+            { xPos = 200
+            , yPos = 200
+            , orientation = North
+            , reflected = False
             }
+        b = Block
+            { xPos = 400+pixelsPerSquare/2
+            , yPos = 400+pixelsPerSquare/2
+            , orientation = North
+            , reflected = False
+            }
+    ks <- newIORef k
+    ps <- newIORef p
+    bs <- newIORef [b]
     return $ GameState
             { player = ps
+            , blocks = bs
             , keyboard = ks
             }
 
