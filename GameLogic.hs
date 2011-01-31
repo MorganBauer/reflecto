@@ -8,8 +8,17 @@
 module GameLogic where
 
 import Graphics.UI.GLUT
-import GameState
 
+--an object's orientation
+data Orientation = North
+                 | Northwest
+                 | West
+                 | Southwest
+                 | South
+                 | Southeast
+                 | East
+                 | Northeast
+             deriving Eq
 
 --clockwise/cclockwise alter an orientation by 45 degrees
 -- in the indicated direction
@@ -46,7 +55,7 @@ clockwise4 :: Orientation -> Orientation
 clockwise4 = clockwise2 . clockwise2
 
 --convert the orientation to a numeric angle
-toAngle :: Orientation -> GLfloat
+toAngle :: Orientation -> GLdouble
 toAngle orientation = case orientation of
     North -> 0
     Northeast -> 45
@@ -56,4 +65,7 @@ toAngle orientation = case orientation of
     Southwest -> 225
     West -> 270
     Northwest -> 315
+
+toReflect :: Bool -> GLdouble
+toReflect r = if r then 180 else 0
 

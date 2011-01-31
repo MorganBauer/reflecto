@@ -9,6 +9,7 @@
 module Main where
 
 import Graphics.UI.GLUT hiding (initState)
+import Control.Monad (liftM)
 
 import GameState
 import Display
@@ -37,25 +38,30 @@ stepTime = 16
 
 timer :: GameState -> TimerCallback
 timer gstate = do
-    let getKey k = get . k . keyboard
-    w  <- getKey wKey gstate
-    s  <- getKey sKey gstate
-    a  <- getKey aKey gstate
-    d  <- getKey dKey gstate
-    l  <- getKey left gstate
-    l' <- getKey left' gstate
-    r  <- getKey right gstate
-    r' <- getKey right' gstate
+    let getKey k = liftM k . get . keyboard
+    w   <- getKey wKey   gstate
+    s   <- getKey sKey   gstate
+    a   <- getKey aKey   gstate
+    d   <- getKey dKey   gstate
+    q   <- getKey qKey   gstate
+    q'  <- getKey qKey'  gstate
+    e   <- getKey eKey   gstate
+    e'  <- getKey eKey'  gstate
+    sp  <- getKey space  gstate
+    sp' <- getKey space' gstate
     let fx = if (a == Down) && (d == Up) then (-) else
              if (a == Up) && (d == Down) then (+) else const
     let fy = if (s == Down) && (w == Up) then (-) else
              if (s == Up) && (w == Down) then (+) else const
-    (xPos . player) gstate $~ (\x -> fx x 3)
-    (yPos . player) gstate $~ (\y -> fy y 3)
-    let rotate = if (l == Down) && (l' == Up) && (r == Up) then clockwise else
-                 if (l == Up) && (r == Down) && (r' == Up) then cclockwise else id
-    (orientation . player) gstate $~ rotate
-    (left' . keyboard) gstate $= l
-    (right' . keyboard) gstate $= r
+    player gstate $~ (\p@(Player{xPos=x}) -> p{xPos=fx x 3})
+    player gstate $~ (\p@(Player{yPos=y}) -> p{yPos=fy y 3})
+    let rotate = if (q == Down) && (q' == Up) && (e == Up) then clockwise else
+                 if (q == Up) && (e == Down) && (e' == Up) then cclockwise else id
+    player gstate $~ (\p@(Player{orientation=o}) -> p{orientation=rotate o})
+    keyboard gstate $~ (\k@(Keyboard{qKey=q}) -> k{qKey'=q})
+    keyboard gstate $~ (\k@(Keyboard{eKey=e}) -> k{eKey'=e})
+    let ref = if (sp == Down) && (sp' == Up) then not else id
+    player gstate $~ (\p@(Player{reflected=r}) -> p{reflected=ref r})
+    keyboard gstate $~ (\k@(Keyboard{space=s}) -> k{space'=s})
     postRedisplay Nothing
     addTimerCallback stepTime $ timer gstate
