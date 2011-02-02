@@ -8,7 +8,7 @@
 module GameLogic where
 
 import Graphics.UI.GLUT
-import Data.List
+import Data.List (find)
 
 pixelsPerSquare :: (Num a) => a
 pixelsPerSquare = 50
@@ -35,7 +35,7 @@ data MObject = Player { xPos :: GLdouble
                      , orientation :: Orientation 
                      , reflected :: Bool 
                      }
-            deriving (Read,Show)
+            deriving (Eq,Read,Show)
 
 --an object's orientation
 data Orientation = North
@@ -108,7 +108,7 @@ gridToFree (x,y) = (fl x, fl y)
 --creates a list of squares through which the player's line of sight passes.
 -- used for switch detection
 viewCheckList :: MObject -> [(GLint,GLint)]
-viewCheckList Player{xPos=x,yPos=y,orientation=o,reflected=r} = case reorient o of
+viewCheckList Player{xPos=x,yPos=y,orientation=o,reflected=r} = case o of
     North -> [(x',j) | j <- [y'..h]]
     South -> [(x',j) | j <- [y',(y'-1)..0]]
     East  -> [(i,y') | i <- [x'..w]]
@@ -133,10 +133,6 @@ viewCheckList Player{xPos=x,yPos=y,orientation=o,reflected=r} = case reorient o 
           h = snd m
           rx = rem (floor x) pixelsPerSquare --x relative to the current square
           ry = rem (floor y) pixelsPerSquare --y relative ...
-          reorient = if not r then id else
-                     if o `elem` [North,South] then id else
-                     if o `elem` [Northeast,Southwest] then cclockwise2 else
-                     if o `elem` [East,West] then clockwise4 else clockwise2
 viewCheckList x = error $ "Attempted to find LOS for nonplayer object:\n" ++ show x
 
 findTarget :: [MObject] -> [(GLint,GLint)] -> Maybe MObject

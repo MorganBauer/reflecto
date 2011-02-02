@@ -37,8 +37,8 @@ renderPlayer :: MObject -> IO ()
 renderPlayer Player {xPos=x, yPos=y, sightLength=sl, orientation=o, reflected=r} = do
     preservingMatrix $ do
         translate (Vector3 x y 0)
-        rotate (toReflect r) (Vector3 0 1 0)
         rotate (toAngle o) (Vector3 0 0 1)
+        rotate (toReflect r) (Vector3 0 1 0)
         color (Color3 0 1 0 :: Color3 GLdouble)
         lineStipple $= Just (1, 0x0F0F)
         renderPrimitive Lines $ do
