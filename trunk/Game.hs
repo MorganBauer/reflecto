@@ -21,7 +21,7 @@ main :: IO ()
 main = do
     (progName, _args) <- getArgsAndInitialize
     initialDisplayMode $= [DoubleBuffered, RGBMode]
-    initialWindowSize $= Size 800 600
+    initialWindowSize $= Size mapWidth mapHeight
     createWindow progName
     clearColor $= Color4 0 0 0 0
     gstate <- initState
@@ -38,30 +38,37 @@ stepTime = 16
 
 timer :: GameState -> TimerCallback
 timer gstate = do
-    let getKey k = liftM k . get . keyboard
-    w   <- getKey wKey   gstate
-    s   <- getKey sKey   gstate
-    a   <- getKey aKey   gstate
-    d   <- getKey dKey   gstate
-    q   <- getKey qKey   gstate
-    q'  <- getKey qKey'  gstate
-    e   <- getKey eKey   gstate
-    e'  <- getKey eKey'  gstate
-    sp  <- getKey space  gstate
-    sp' <- getKey space' gstate
-    let fx = if (a == Down) && (d == Up) then (-) else
-             if (a == Up) && (d == Down) then (+) else const
-    let fy = if (s == Down) && (w == Up) then (-) else
-             if (s == Up) && (w == Down) then (+) else const
-    player gstate $~ (\p@(Player{xPos=x}) -> p{xPos=fx x 3})
-    player gstate $~ (\p@(Player{yPos=y}) -> p{yPos=fy y 3})
-    let rotate = if (q == Down) && (q' == Up) && (e == Up) then clockwise else
-                 if (q == Up) && (e == Down) && (e' == Up) then cclockwise else id
-    player gstate $~ (\p@(Player{orientation=o}) -> p{orientation=rotate o})
+    k <- (get . keyboard) gstate
+    p <- (get . player) gstate
+    os <- (get . blocks) gstate
+    player gstate $~ (updatePlayer k os)
+    keyboard gstate $~ (\k@(Keyboard{space=s}) -> k{space'=s})
     keyboard gstate $~ (\k@(Keyboard{qKey=q}) -> k{qKey'=q})
     keyboard gstate $~ (\k@(Keyboard{eKey=e}) -> k{eKey'=e})
-    let ref = if (sp == Down) && (sp' == Up) then not else id
-    player gstate $~ (\p@(Player{reflected=r}) -> p{reflected=ref r})
-    keyboard gstate $~ (\k@(Keyboard{space=s}) -> k{space'=s})
     postRedisplay Nothing
     addTimerCallback stepTime $ timer gstate
+
+updatePlayer :: Keyboard -> [MObject] -> MObject -> MObject
+updatePlayer k os p = Player { xPos = x
+                             , yPos = y
+                             , sightLength = getSL
+                             , target = t
+                             , orientation = rot o
+                             , reflected = ref (reflected p)
+                             }
+    where
+        x = if aKey k == Down && dKey k == Up then (xPos p) - vel else
+            if aKey k == Up && dKey k == Down then (xPos p) + vel else xPos p
+        y = if sKey k == Down && wKey k == Up then (yPos p) - vel else
+            if sKey k == Up && wKey k == Down then (yPos p) + vel else yPos p
+        t = findTarget os (viewCheckList p{xPos=x,yPos=y,orientation=o})
+        getSL = case t of
+            Just Block{xCoord=xc,yCoord=yc} -> let (xc', yc') = gridToFree (xc,yc) 
+                        in (if o `elem` [North,South,East,West] then 1 else (sqrt 2)) * (max (abs $ x - xc') (abs $ y - yc') - pixelsPerSquare/2)
+            Nothing -> 1000
+        o = if and [qKey k == Down, qKey' k == Up, eKey k == Up] then cclockwise (orientation p) else
+            if and [qKey k == Up, eKey k == Down, eKey' k == Up] then clockwise (orientation p) else orientation p
+        (ref,rot) = if space k == Down && space' k == Up then (not,turns) else (id,id)
+        turns = if o `elem` [North,South] then clockwise4 else
+                if o `elem` [Northeast,Southwest] then clockwise2 else
+                if o `elem` [East,West] then id else cclockwise2
