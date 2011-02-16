@@ -61,12 +61,9 @@ playerShape = [Vertex2 0 10
               ]
 
 renderBlock :: MObject -> IO ()
-renderBlock Block {xCoord=x, yCoord=y, orientation=o, reflected=r} = do
+renderBlock Block {xPos=x, yPos=y, orientation=o, reflected=r} = do
     preservingMatrix $ do
-        let c = gridToFree (x,y)
-            x' = fst c
-            y' = snd c
-        translate (Vector3 x' y' 0)
+        translate (Vector3 x y 0)
         rotate (toAngle o) (Vector3 0 0 1)
         rotate (toReflect r) (Vector3 0 1 0)
         color (Color3 0.5 0.5 0.5 :: Color3 GLdouble)
