@@ -30,8 +30,8 @@ data MObject = Player { xPos :: GLdouble
                       , orientation :: Orientation 
                       , reflected :: Bool 
                       } |
-               Block { xCoord :: GLint 
-                     , yCoord :: GLint 
+               Block { xPos :: GLdouble 
+                     , yPos :: GLdouble 
                      , orientation :: Orientation 
                      , reflected :: Bool 
                      }
@@ -140,6 +140,6 @@ findTarget os (i:is) = case find ((i ==) . getCoords) os of
             Just x -> Just x
             Nothing -> findTarget os is
     where getCoords obj = case obj of
-             Block{xCoord=x,yCoord=y} -> (x,y)
+             Block{xPos=x,yPos=y} -> freeToGrid (x,y)
              otherwise -> error $ "Unsupported MObject constructor: " ++ show obj
 findTarget os [] = Nothing

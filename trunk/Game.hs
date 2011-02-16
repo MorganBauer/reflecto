@@ -65,9 +65,9 @@ updatePlayer k os p = Player { xPos = x
             if sKey k == Up && wKey k == Down then (yPos p) + vel else yPos p
         t = findTarget os (viewCheckList p{xPos=x,yPos=y,orientation=o})
         getSL = case t of
-            Just Block{xCoord=xc,yCoord=yc} -> let (xc', yc') = gridToFree (xc,yc) 
-                        in (if o `elem` [North,South,East,West] then 1 
-                            else (sqrt 2)) * (max (abs $ x - xc') (abs $ y - yc') - pixelsPerSquare/2)
+            Just Block{xPos=xc,yPos=yc} -> 
+                            (if o `elem` [North,South,East,West] then 1 
+                            else (sqrt 2)) * (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
             Nothing -> 1000
         o = if and [qKey k == Down, qKey' k == Up, eKey k == Up] then cclockwise (orientation p) else
             if and [qKey k == Up, eKey k == Down, eKey' k == Up] then clockwise (orientation p) else orientation p
@@ -83,14 +83,16 @@ reflecto gstate = do
         let t = (fromJust . target) p --note: fromJust is safe because of isJust check above.
             (px,py) = getFree t
             (ox,oy) = (xPos p, yPos p)
-            os' = move t ox oy : filter (/= t) os
+            os' = move t ox oy (orientation p) : filter (/= t) os
         player gstate $= p{xPos=px,yPos=py}
         blocks gstate $= os'
     where
         getFree o = case o of
-            Block{xCoord=x, yCoord=y} -> gridToFree (x,y)
+            Block{xPos=x, yPos=y} -> (x,y)
             otherwise -> error $ "Unsupported MObject constructor: " ++ show o
-        move o x y = let (x',y') = freeToGrid (x,y) 
-            in case o of
-                b@Block{} -> b{xCoord=x',yCoord=y'}
-                otherwise -> error $ "Unsupported MObject constructor: " ++ show o
+        move o x y po = case o of
+            b@Block{orientation=oo,reflected=r} -> let (x',y') = (gridToFree . freeToGrid) (x,y) in b{xPos=x',yPos=y',orientation=reorient oo po,reflected=not r}
+            otherwise -> error $ "Unsupported MObject constructor: " ++ show o
+        reorient oo po = if po `elem` [North,South] then clockwise4 oo else
+                         if po `elem` [Northeast,Southwest] then clockwise2 oo else
+                         if po `elem` [East,West] then oo else cclockwise2 oo

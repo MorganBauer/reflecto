@@ -57,20 +57,20 @@ initState = do
             , reflected = False
             }
         b1 = Block
-            { xCoord = 6
-            , yCoord = 8
+            { xPos = 325
+            , yPos = 425
             , orientation = North
             , reflected = False
             }
         b2 = Block
-            { xCoord = 10
-            , yCoord = 2
+            { xPos = 525
+            , yPos = 125
             , orientation = North
             , reflected = False
             }
         b3 = Block
-            { xCoord = 11
-            , yCoord = 11
+            { xPos = 575
+            , yPos = 575
             , orientation = North
             , reflected = False
             }
