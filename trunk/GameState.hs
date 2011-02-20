@@ -62,6 +62,13 @@ initState = do
             , orientation = North
             , reflected = False
             }
+        r1 = Roller
+            { xPos = 325
+            , yPos = 125
+            , orientation = North
+            , reflected = False
+            , moving = Nothing
+            }
         b2 = Block
             { xPos = 525
             , yPos = 125
@@ -76,7 +83,7 @@ initState = do
             }
     ks <- newIORef k
     ps <- newIORef p
-    bs <- newIORef [b1,b2,b3]
+    bs <- newIORef [b1,r1,b2,b3]
     return $ GameState
             { player = ps
             , blocks = bs
