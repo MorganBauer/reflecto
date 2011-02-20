@@ -19,7 +19,7 @@ display gstate = do
     clear [ColorBuffer]
     polygonMode $= (Line,Fill)
     drawGrid
-    mapM_ renderBlock =<< (get . blocks) gstate
+    mapM_ renderMObject =<< (get . blocks) gstate
     renderPlayer =<< (get . player) gstate
     swapBuffers
 
@@ -60,6 +60,12 @@ playerShape = [Vertex2 0 10
               ,Vertex2 (-7) (-5)
               ]
 
+renderMObject :: MObject -> IO ()
+renderMObject o = case o of
+    Block{} -> renderBlock o
+    Roller{} -> renderRoller o
+    otherwise -> error $ "renderMObject: Unsupported MObject constructor " ++ show o
+
 renderBlock :: MObject -> IO ()
 renderBlock Block {xPos=x, yPos=y, orientation=o, reflected=r} = do
     preservingMatrix $ do
@@ -76,6 +82,25 @@ blockShape = [Vertex2 (-pixelsPerSquare/2) (-pixelsPerSquare/2)
              ,Vertex2 ( pixelsPerSquare/2) ( pixelsPerSquare/2)
              ,Vertex2 ( pixelsPerSquare/2) (-pixelsPerSquare/2)
              ]
+
+renderRoller :: MObject -> IO ()
+renderRoller Roller {xPos=x, yPos=y, orientation=o, reflected=r} = do
+    preservingMatrix $ do
+        translate (Vector3 x y 0)
+        rotate (toAngle o) (Vector3 0 0 1)
+        rotate (toReflect r) (Vector3 0 1 0)
+        color (Color3 0.7 0.7 0.0 :: Color3 GLdouble)
+        renderPrimitive Polygon $ mapM_ vertex rollerShape
+renderRoller x = error $ "Attempted to render non-roller as a roller:\n" ++ show x
+
+rollerShape :: [Vertex2 GLdouble]
+rollerShape = [Vertex2 (-pixelsPerSquare/2) 0
+              ,Vertex2 (-pixelsPerSquare/3) (pixelsPerSquare/3)
+              ,Vertex2 ( pixelsPerSquare/3) (pixelsPerSquare/3)
+              ,Vertex2 ( pixelsPerSquare/2) 0
+              ,Vertex2 ( pixelsPerSquare/3) (-pixelsPerSquare/3)
+              ,Vertex2 (-pixelsPerSquare/3) (-pixelsPerSquare/3)
+              ]
 
 --reshape callback, takes care of the window in the event
 --  that its shape changes.

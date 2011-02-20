@@ -10,7 +10,7 @@ module Main where
 
 import Graphics.UI.GLUT hiding (initState)
 import Control.Monad (liftM)
-import Data.Maybe (isJust,fromJust)
+import Data.Maybe (isJust,fromJust,isNothing)
 
 import GameState
 import Display
@@ -59,13 +59,18 @@ updatePlayer k os p = Player { xPos = x
                              , reflected = ref (reflected p)
                              }
     where
-        x = if aKey k == Down && dKey k == Up then (xPos p) - vel else
-            if aKey k == Up && dKey k == Down then (xPos p) + vel else xPos p
-        y = if sKey k == Down && wKey k == Up then (yPos p) - vel else
-            if sKey k == Up && wKey k == Down then (yPos p) + vel else yPos p
+        x' = if and [aKey k == Down, dKey k == Up] then (xPos p) - vel else
+             if and [aKey k == Up, dKey k == Down] then (xPos p) + vel else xPos p
+        y' = if and [sKey k == Down, wKey k == Up] then (yPos p) - vel else
+             if and [sKey k == Up, wKey k == Down] then (yPos p) + vel else yPos p
+        x = if or [x' > mapWidth,  x' < 0, intersection (x',yPos p) os] then xPos p else x'
+        y = if or [y' > mapHeight, y' < 0, intersection (xPos p,y') os] then yPos p else y'
         t = findTarget os (viewCheckList p{xPos=x,yPos=y,orientation=o})
         getSL = case t of
             Just Block{xPos=xc,yPos=yc} -> 
+                            (if o `elem` [North,South,East,West] then 1 
+                            else (sqrt 2)) * (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
+            Just Roller{xPos=xc,yPos=yc} ->
                             (if o `elem` [North,South,East,West] then 1 
                             else (sqrt 2)) * (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
             Nothing -> 1000
@@ -89,10 +94,12 @@ reflecto gstate = do
     where
         getFree o = case o of
             Block{xPos=x, yPos=y} -> (x,y)
-            otherwise -> error $ "Unsupported MObject constructor: " ++ show o
+            Roller{xPos=x,yPos=y} -> (x,y)
+            otherwise -> error $ "reflecto: Unsupported MObject constructor: " ++ show o
         move o x y po = case o of
-            b@Block{orientation=oo,reflected=r} -> let (x',y') = (gridToFree . freeToGrid) (x,y) in b{xPos=x',yPos=y',orientation=reorient oo po,reflected=not r}
-            otherwise -> error $ "Unsupported MObject constructor: " ++ show o
+            Block{orientation=oo,reflected=r} -> let (x',y') = (gridToFree . freeToGrid) (x,y) in o{xPos=x',yPos=y',orientation=reorient oo po,reflected=not r}
+            Roller{orientation=oo,reflected=r} -> let (x',y') = (gridToFree . freeToGrid) (x,y) in o{xPos=x',yPos=y',orientation=reorient oo po,reflected=not r}
+            otherwise -> error $ "reflecto: Unsupported MObject constructor: " ++ show o
         reorient oo po = if po `elem` [North,South] then clockwise4 oo else
                          if po `elem` [Northeast,Southwest] then clockwise2 oo else
                          if po `elem` [East,West] then oo else cclockwise2 oo

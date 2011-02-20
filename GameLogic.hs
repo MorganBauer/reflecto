@@ -9,6 +9,7 @@ module GameLogic where
 
 import Graphics.UI.GLUT
 import Data.List (find)
+import Data.Maybe (isJust)
 
 pixelsPerSquare :: (Num a) => a
 pixelsPerSquare = 50
@@ -34,7 +35,13 @@ data MObject = Player { xPos :: GLdouble
                      , yPos :: GLdouble 
                      , orientation :: Orientation 
                      , reflected :: Bool 
-                     }
+                     } |
+               Roller { xPos :: GLdouble
+                      , yPos :: GLdouble
+                      , orientation :: Orientation
+                      , reflected :: Bool
+                      , moving :: Maybe Orientation
+                      }
             deriving (Eq,Read,Show)
 
 --an object's orientation
@@ -97,6 +104,13 @@ toAngle orientation = case orientation of
 toReflect :: Bool -> GLdouble
 toReflect r = if r then 180 else 0
 
+intersection :: (GLdouble,GLdouble) -> [MObject] -> Bool
+intersection p os = isJust $ flip find os (\o -> coord == (case o of
+        Block{xPos=x,yPos=y} -> freeToGrid (x,y)
+        Roller{xPos=x,yPos=y} -> freeToGrid (x,y)
+        otherwise -> error $ "Unsupported MObject constructor: " ++ show o))
+    where coord = freeToGrid p
+
 freeToGrid :: (GLdouble,GLdouble) -> (GLint,GLint)
 freeToGrid (x,y) = (trunc x, trunc y)
     where trunc z = floor $ z / pixelsPerSquare
@@ -141,5 +155,6 @@ findTarget os (i:is) = case find ((i ==) . getCoords) os of
             Nothing -> findTarget os is
     where getCoords obj = case obj of
              Block{xPos=x,yPos=y} -> freeToGrid (x,y)
+             Roller{xPos=x,yPos=y} -> freeToGrid (x,y)
              otherwise -> error $ "Unsupported MObject constructor: " ++ show obj
 findTarget os [] = Nothing
