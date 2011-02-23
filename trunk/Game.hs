@@ -8,7 +8,7 @@
 
 module Main where
 
-import Graphics.UI.GLUT hiding (initState)
+import Graphics.UI.GLUT hiding (initState,position)
 import Control.Monad (liftM)
 import Data.Maybe (isJust,fromJust,isNothing)
 
@@ -67,12 +67,7 @@ updatePlayer k os p = Player { xPos = x
         y = if or [y' > mapHeight, y' < 0, intersection (xPos p,y') os] then yPos p else y'
         t = findTarget os (viewCheckList p{xPos=x,yPos=y,orientation=o})
         getSL = case t of
-            Just Block{xPos=xc,yPos=yc} -> 
-                            (if o `elem` [North,South,East,West] then 1 
-                            else (sqrt 2)) * (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
-            Just Roller{xPos=xc,yPos=yc} ->
-                            (if o `elem` [North,South,East,West] then 1 
-                            else (sqrt 2)) * (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
+            Just ob -> edgeShape ob (x,y) o
             Nothing -> 1000
         o = if and [qKey k == Down, qKey' k == Up, eKey k == Up] then cclockwise (orientation p) else
             if and [qKey k == Up, eKey k == Down, eKey' k == Up] then clockwise (orientation p) else orientation p
@@ -84,22 +79,17 @@ reflecto gstate = do
     p <- (get . player) gstate
     os <- (get . blocks) gstate
     if not $ and [space k == Down, space' k == Up, isJust (target p)] then return ()
-     else do
+      else do
         let t = (fromJust . target) p --note: fromJust is safe because of isJust check above.
-            (px,py) = getFree t
+            (px,py) = position t
+            oo = orientation t
+            po = orientation p
             (ox,oy) = (xPos p, yPos p)
-            os' = move t ox oy (orientation p) : filter (/= t) os
+            obj = move t (ox,oy) (reorient oo (orientation p))
+            os' = obj{reflected=not(reflected obj)} : filter (/= t) os
         player gstate $= p{xPos=px,yPos=py}
         blocks gstate $= os'
     where
-        getFree o = case o of
-            Block{xPos=x, yPos=y} -> (x,y)
-            Roller{xPos=x,yPos=y} -> (x,y)
-            otherwise -> error $ "reflecto: Unsupported MObject constructor: " ++ show o
-        move o x y po = case o of
-            Block{orientation=oo,reflected=r} -> let (x',y') = (gridToFree . freeToGrid) (x,y) in o{xPos=x',yPos=y',orientation=reorient oo po,reflected=not r}
-            Roller{orientation=oo,reflected=r} -> let (x',y') = (gridToFree . freeToGrid) (x,y) in o{xPos=x',yPos=y',orientation=reorient oo po,reflected=not r}
-            otherwise -> error $ "reflecto: Unsupported MObject constructor: " ++ show o
         reorient oo po = if po `elem` [North,South] then clockwise4 oo else
                          if po `elem` [Northeast,Southwest] then clockwise2 oo else
                          if po `elem` [East,West] then oo else cclockwise2 oo
