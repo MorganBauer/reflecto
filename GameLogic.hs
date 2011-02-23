@@ -23,6 +23,12 @@ mapHeight = 600
 vel :: (Num a) => a
 vel = 3
 
+class Mobile a where
+    coords :: a -> (GLint, GLint)
+    position :: a -> (GLdouble, GLdouble)
+    move :: a -> (GLdouble, GLdouble) -> Orientation -> a
+    edgeShape :: a -> (GLdouble, GLdouble) -> Orientation -> GLdouble 
+
 --MObject: Mobile Objects. Type includes information like position, orientation, etc.
 data MObject = Player { xPos :: GLdouble 
                       , yPos :: GLdouble
@@ -41,8 +47,38 @@ data MObject = Player { xPos :: GLdouble
                       , orientation :: Orientation
                       , reflected :: Bool
                       , moving :: Maybe Orientation
-                      }
+                      } 
             deriving (Eq,Read,Show)
+
+instance Mobile MObject where
+    coords o = case o of
+        Player {xPos=x,yPos=y} -> freeToGrid (x,y)
+        Block {xPos=x,yPos=y} -> freeToGrid (x,y)
+        Roller {xPos=x,yPos=y} -> freeToGrid (x,y)
+        otherwise -> error $ "No implementation for coords for MObject: " ++ show o
+
+    position o = case o of
+        Player {xPos=x,yPos=y} -> (x,y)
+        Block {xPos=x,yPos=y} -> (x,y)
+        Roller {xPos=x,yPos=y} -> (x,y)
+        otherwise -> error $ "No implementation for position for MObject: " ++ show o
+
+    move ob (x,y) or = let (x',y') = (gridToFree . freeToGrid) (x,y) in
+      case ob of
+        Player{} -> ob {xPos=x',yPos=y',orientation=or}
+        Block{} -> ob {xPos=x',yPos=y',orientation=or}
+        Roller{} -> ob {xPos=x',yPos=y',orientation=or}
+        otherwise -> error $ "No implementation for move for MObject: " ++ show ob
+
+    edgeShape ob (x,y) or = case ob of
+        Player{} -> error $ "No edge shape defined for Player."
+        Block{xPos=xc,yPos=yc} -> (if or `elem` [North,South,East,West] 
+                                then 1 else (sqrt 2)) *
+                        (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
+        Roller{xPos=xc,yPos=yc} -> (if or `elem` [North,South,East,West] 
+                                then 1 else (sqrt 2)) *
+                        (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
+        otherwise -> error $ "No implementation for edgeShape for MObject: " ++ show ob
 
 --an object's orientation
 data Orientation = North
