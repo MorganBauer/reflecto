@@ -23,20 +23,15 @@ mapHeight = 600
 vel :: (Num a) => a
 vel = 3
 
-class Mobile a where
-    coords :: a -> (GLint, GLint)
-    position :: a -> (GLdouble, GLdouble)
-    move :: a -> (GLdouble, GLdouble) -> Orientation -> a
-    edgeShape :: a -> (GLdouble, GLdouble) -> Orientation -> GLdouble 
-
---MObject: Mobile Objects. Type includes information like position, orientation, etc.
-data MObject = Player { xPos :: GLdouble 
+--GObject: Game Objects, Objects with various ways of interacting with the player.
+data GObject = Player { xPos :: GLdouble 
                       , yPos :: GLdouble
                       , sightLength :: GLdouble
-                      , target :: Maybe MObject
+                      , target :: Maybe GObject
                       , orientation :: Orientation 
                       , reflected :: Bool 
                       } |
+                  --mobile objects
                Block { xPos :: GLdouble 
                      , yPos :: GLdouble 
                      , orientation :: Orientation 
@@ -47,40 +42,72 @@ data MObject = Player { xPos :: GLdouble
                       , orientation :: Orientation
                       , reflected :: Bool
                       , moving :: Maybe Orientation
-                      } 
+                      } |
+                  --Stationary objects
+               Wall { xPos :: GLdouble
+                    , yPos :: GLdouble
+                    } |
+               Pit { xPos :: GLdouble
+                   , yPos :: GLdouble
+                   }
             deriving (Eq,Read,Show)
 
-instance Mobile MObject where
-    coords o = case o of
-        Player {xPos=x,yPos=y} -> freeToGrid (x,y)
-        Block {xPos=x,yPos=y} -> freeToGrid (x,y)
-        Roller {xPos=x,yPos=y} -> freeToGrid (x,y)
-        otherwise -> error $ "No implementation for coords for MObject: " ++ show o
+coords :: GObject -> (GLint, GLint)
+coords o = case o of
+    Player {xPos=x,yPos=y} -> freeToGrid (x,y)
+    Block {xPos=x,yPos=y} -> freeToGrid (x,y)
+    Roller {xPos=x,yPos=y} -> freeToGrid (x,y)
+    Wall {xPos=x,yPos=y} -> freeToGrid (x,y)
+    Pit {xPos=x,yPos=y} -> freeToGrid (x,y)
+    otherwise -> error $ "No implementation for coords for GObject: " ++ show o
 
-    position o = case o of
-        Player {xPos=x,yPos=y} -> (x,y)
-        Block {xPos=x,yPos=y} -> (x,y)
-        Roller {xPos=x,yPos=y} -> (x,y)
-        otherwise -> error $ "No implementation for position for MObject: " ++ show o
+position :: GObject -> (GLdouble, GLdouble)
+position o = case o of
+    Player {xPos=x,yPos=y} -> (x,y)
+    Block {xPos=x,yPos=y} -> (x,y)
+    Roller {xPos=x,yPos=y} -> (x,y)
+    Wall {xPos=x,yPos=y} -> (x,y)
+    Pit {xPos=x,yPos=y} -> (x,y)
+    otherwise -> error $ "No implementation for position for GObject: " ++ show o
 
-    move ob (x,y) or = let (x',y') = (gridToFree . freeToGrid) (x,y) in
-      case ob of
-        Player{} -> ob {xPos=x',yPos=y',orientation=or}
-        Block{} -> ob {xPos=x',yPos=y',orientation=or}
-        Roller{} -> ob {xPos=x',yPos=y',orientation=or}
-        otherwise -> error $ "No implementation for move for MObject: " ++ show ob
+movep :: GObject -> Bool
+movep ob = case ob of
+    Player{} -> True
+    Block{} -> True
+    Roller{} -> True
+    Wall{} -> False
+    Pit{} -> False
 
-    edgeShape ob (x,y) or = case ob of
-        Player{} -> error $ "No edge shape defined for Player."
-        Block{xPos=xc,yPos=yc} -> (if or `elem` [North,South,East,West] 
-                                then 1 else (sqrt 2)) *
-                        (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
-        Roller{xPos=xc,yPos=yc} -> (if or `elem` [North,South,East,West] 
-                                then 1 else (sqrt 2)) *
-                        (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
-        otherwise -> error $ "No implementation for edgeShape for MObject: " ++ show ob
+move :: GObject -> (GLdouble, GLdouble) -> Orientation -> GObject 
+move ob (x,y) or = let (x',y') = (gridToFree . freeToGrid) (x,y) in
+  case ob of
+    Player{} -> ob {xPos=x',yPos=y',orientation=or}
+    Block{} -> ob {xPos=x',yPos=y',orientation=or}
+    Roller{} -> ob {xPos=x',yPos=y',orientation=or}
+    otherwise -> error $ "No implementation for move for GObject: " ++ show ob
 
---an object's orientation
+targetp :: GObject -> Bool
+targetp ob = case ob of
+    Player{} -> False
+    Block{} -> True
+    Roller{} -> True
+    Wall{} -> True
+    Pit{} -> False
+
+edgeShape :: GObject -> (GLdouble, GLdouble) -> Orientation -> GLdouble 
+edgeShape ob (x,y) or = case ob of
+    Block{xPos=xc,yPos=yc} -> (if or `elem` [North,South,East,West] 
+                            then 1 else (sqrt 2)) *
+                    (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
+    Roller{xPos=xc,yPos=yc} -> (if or `elem` [North,South,East,West] 
+                            then 1 else (sqrt 2)) *
+                    (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
+    Wall{xPos=xc,yPos=yc} -> (if or `elem` [North,South,East,West]
+                            then 1 else (sqrt 2)) *
+                    (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
+    otherwise -> error $ "No implementation for edgeShape for GObject: " ++ show ob
+
+--an GObject's orientation
 data Orientation = North
                  | Northwest
                  | West
@@ -115,7 +142,7 @@ cclockwise or = case or of
     East -> Northeast
     Northeast -> North
 
---these are used during reflections of objects
+--these are used during reflections of GObjects
 clockwise2 :: Orientation -> Orientation
 clockwise2 = clockwise . clockwise
 
@@ -140,12 +167,9 @@ toAngle orientation = case orientation of
 toReflect :: Bool -> GLdouble
 toReflect r = if r then 180 else 0
 
-intersection :: (GLdouble,GLdouble) -> [MObject] -> Bool
-intersection p os = isJust $ flip find os (\o -> coord == (case o of
-        Block{xPos=x,yPos=y} -> freeToGrid (x,y)
-        Roller{xPos=x,yPos=y} -> freeToGrid (x,y)
-        otherwise -> error $ "Unsupported MObject constructor: " ++ show o))
-    where coord = freeToGrid p
+intersection :: (GLdouble,GLdouble) -> [GObject] -> Bool
+intersection p os = isJust $ flip find os (\o -> pc == coords o)
+    where pc = freeToGrid p
 
 freeToGrid :: (GLdouble,GLdouble) -> (GLint,GLint)
 freeToGrid (x,y) = (trunc x, trunc y)
@@ -157,7 +181,7 @@ gridToFree (x,y) = (fl x, fl y)
 
 --creates a list of squares through which the player's line of sight passes.
 -- used for switch detection
-viewCheckList :: MObject -> [(GLint,GLint)]
+viewCheckList :: GObject -> [(GLint,GLint)]
 viewCheckList Player{xPos=x,yPos=y,orientation=o,reflected=r} = case o of
     North -> [(x',j) | j <- [y'..h]]
     South -> [(x',j) | j <- [y',(y'-1)..0]]
@@ -183,14 +207,10 @@ viewCheckList Player{xPos=x,yPos=y,orientation=o,reflected=r} = case o of
           h = snd m
           rx = rem (floor x) pixelsPerSquare --x relative to the current square
           ry = rem (floor y) pixelsPerSquare --y relative ...
-viewCheckList x = error $ "Attempted to find LOS for nonplayer object:\n" ++ show x
+viewCheckList x = error $ "Attempted to find LOS for nonplayer GObject:\n" ++ show x
 
-findTarget :: [MObject] -> [(GLint,GLint)] -> Maybe MObject
-findTarget os (i:is) = case find ((i ==) . getCoords) os of
+findTarget :: [GObject] -> [(GLint,GLint)] -> Maybe GObject
+findTarget os (i:is) = case find (\x -> targetp x && i == coords x) os of
             Just x -> Just x
             Nothing -> findTarget os is
-    where getCoords obj = case obj of
-             Block{xPos=x,yPos=y} -> freeToGrid (x,y)
-             Roller{xPos=x,yPos=y} -> freeToGrid (x,y)
-             otherwise -> error $ "Unsupported MObject constructor: " ++ show obj
 findTarget os [] = Nothing

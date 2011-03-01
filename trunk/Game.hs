@@ -24,7 +24,7 @@ main = do
     initialDisplayMode $= [DoubleBuffered, RGBMode]
     initialWindowSize $= Size mapWidth mapHeight
     createWindow progName
-    clearColor $= Color4 0 0 0 0
+    clearColor $= Color4 0.1 0.3 0.1 0
     gstate <- initState
     displayCallback $= display gstate
     reshapeCallback $= Just reshape
@@ -50,14 +50,13 @@ timer gstate = do
     postRedisplay Nothing
     addTimerCallback stepTime $ timer gstate
 
-updatePlayer :: Keyboard -> [MObject] -> MObject -> MObject
-updatePlayer k os p = Player { xPos = x
-                             , yPos = y
-                             , sightLength = getSL
-                             , target = t
-                             , orientation = rot o
-                             , reflected = ref (reflected p)
-                             }
+updatePlayer :: Keyboard -> [GObject] -> GObject -> GObject
+updatePlayer k os p = p{ xPos = x
+                       , yPos = y
+                       , sightLength = getSL
+                       , target = t
+                       , orientation = o
+                       }
     where
         x' = if and [aKey k == Down, dKey k == Up] then (xPos p) - vel else
              if and [aKey k == Up, dKey k == Down] then (xPos p) + vel else xPos p
@@ -71,14 +70,13 @@ updatePlayer k os p = Player { xPos = x
             Nothing -> 1000
         o = if and [qKey k == Down, qKey' k == Up, eKey k == Up] then cclockwise (orientation p) else
             if and [qKey k == Up, eKey k == Down, eKey' k == Up] then clockwise (orientation p) else orientation p
-        (ref,rot) = if and [space k == Down, space' k == Up, isJust t] then (not,clockwise4) else (id,id)
 
 reflecto :: GameState -> IO ()
 reflecto gstate = do
     k <- (get . keyboard) gstate
     p <- (get . player) gstate
     os <- (get . blocks) gstate
-    if not $ and [space k == Down, space' k == Up, isJust (target p)] then return ()
+    if not $ and [space k == Down, space' k == Up, isJust $ target p, movep $ fromJust $ target p] then return ()
       else do
         let t = (fromJust . target) p --note: fromJust is safe because of isJust check above.
             (px,py) = position t
@@ -87,7 +85,7 @@ reflecto gstate = do
             (ox,oy) = (xPos p, yPos p)
             obj = move t (ox,oy) (reorient oo (orientation p))
             os' = obj{reflected=not(reflected obj)} : filter (/= t) os
-        player gstate $= p{xPos=px,yPos=py}
+        player gstate $= p{xPos=px,yPos=py,orientation=clockwise4 po,reflected=not $ reflected p}
         blocks gstate $= os'
     where
         reorient oo po = if po `elem` [North,South] then clockwise4 oo else
