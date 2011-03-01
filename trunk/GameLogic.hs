@@ -7,7 +7,7 @@
 
 module GameLogic where
 
-import Graphics.UI.GLUT
+import Graphics.UI.GLUT hiding (position)
 import Data.List (find)
 import Data.Maybe (isJust)
 
@@ -26,11 +26,19 @@ vel = 3
 --GObject: Game Objects, Objects with various ways of interacting with the player.
 data GObject = Player { xPos :: GLdouble 
                       , yPos :: GLdouble
+                      , velocity :: Maybe Orientation
                       , sightLength :: GLdouble
                       , target :: Maybe GObject
                       , orientation :: Orientation 
                       , reflected :: Bool 
                       } |
+               Start { xPos :: GLdouble
+                     , yPos :: GLdouble
+                     , orientation :: Orientation
+                     } |
+               End { xPos :: GLdouble
+                   , yPos :: GLdouble
+                   } | 
                   --mobile objects
                Block { xPos :: GLdouble 
                      , yPos :: GLdouble 
@@ -55,6 +63,8 @@ data GObject = Player { xPos :: GLdouble
 coords :: GObject -> (GLint, GLint)
 coords o = case o of
     Player {xPos=x,yPos=y} -> freeToGrid (x,y)
+    Start {xPos=x,yPos=y} -> freeToGrid (x,y)
+    End {xPos=x,yPos=y} -> freeToGrid (x,y)
     Block {xPos=x,yPos=y} -> freeToGrid (x,y)
     Roller {xPos=x,yPos=y} -> freeToGrid (x,y)
     Wall {xPos=x,yPos=y} -> freeToGrid (x,y)
@@ -64,6 +74,8 @@ coords o = case o of
 position :: GObject -> (GLdouble, GLdouble)
 position o = case o of
     Player {xPos=x,yPos=y} -> (x,y)
+    Start {xPos=x,yPos=y} -> (x,y)
+    End {xPos=x,yPos=y} -> (x,y)
     Block {xPos=x,yPos=y} -> (x,y)
     Roller {xPos=x,yPos=y} -> (x,y)
     Wall {xPos=x,yPos=y} -> (x,y)
@@ -73,10 +85,43 @@ position o = case o of
 movep :: GObject -> Bool
 movep ob = case ob of
     Player{} -> True
+    Start{} -> False
+    End{} -> False
     Block{} -> True
     Roller{} -> True
     Wall{} -> False
     Pit{} -> False
+
+pushp :: GObject -> Bool
+pushp ob = case ob of
+    Player{} -> False
+    Start{} -> False
+    End{} -> False
+    Block{} -> False
+    Roller{} -> True
+    Wall{} -> False
+    Pit{} -> False
+
+moveUpdate :: GObject -> GObject
+moveUpdate ob = if pushp ob && isJust (moving ob)
+    then let vel' = vel*1.1
+             (x,y) = position ob 
+             Just o = moving ob
+             (x',y') = case o of
+                        North -> (x,y+vel')
+                        East -> (x+vel',y)
+                        South -> (x,y-vel')
+                        West -> (x-vel',y)
+                        Northeast -> (x+vel',y+vel')
+                        Southeast -> (x+vel',y-vel')
+                        Southwest -> (x-vel',y-vel')
+                        Northwest -> (x-vel',y+vel')
+             (i',j') = (gridToFree . freeToGrid) (x',y')
+             ob' = ob{ xPos = x', yPos = y'
+                     , moving = if vel <= abs (i'-x') || vel <= abs (j'-y')
+                            then moving ob else Nothing}
+        in ob'
+    else ob
 
 move :: GObject -> (GLdouble, GLdouble) -> Orientation -> GObject 
 move ob (x,y) or = let (x',y') = (gridToFree . freeToGrid) (x,y) in
@@ -86,9 +131,24 @@ move ob (x,y) or = let (x',y') = (gridToFree . freeToGrid) (x,y) in
     Roller{} -> ob {xPos=x',yPos=y',orientation=or}
     otherwise -> error $ "No implementation for move for GObject: " ++ show ob
 
+obstructs :: Maybe GObject -> Maybe GObject -> Char -> Bool
+obstructs (Just ob) Nothing d = case ob of
+    Player{} -> False
+    Start{} -> False
+    End{} -> False
+    Block{} -> True
+    Roller{orientation=o} -> d == 'x' && not (o == East || o == West) ||
+                             d == 'y' && not (o == North || o == South)
+    Wall{} -> True
+    Pit{} -> True
+obstructs Nothing _ _ = False
+obstructs (Just _) (Just _) _ = True
+
 targetp :: GObject -> Bool
 targetp ob = case ob of
     Player{} -> False
+    Start{} -> False
+    End{} -> False
     Block{} -> True
     Roller{} -> True
     Wall{} -> True
@@ -167,8 +227,8 @@ toAngle orientation = case orientation of
 toReflect :: Bool -> GLdouble
 toReflect r = if r then 180 else 0
 
-intersection :: (GLdouble,GLdouble) -> [GObject] -> Bool
-intersection p os = isJust $ flip find os (\o -> pc == coords o)
+intersection :: (GLdouble,GLdouble) -> [GObject] -> Maybe GObject
+intersection p os = flip find os (\o -> pc == coords o)
     where pc = freeToGrid p
 
 freeToGrid :: (GLdouble,GLdouble) -> (GLint,GLint)
