@@ -62,8 +62,8 @@ playerShape = [Vertex2 0 10
 
 renderGObject :: GObject -> IO ()
 renderGObject o = case o of
-    Start -> return ()
-    End -> return ()
+    Start{} -> return ()
+    End{} -> return ()
     Block{} -> renderBlock o
     Roller{} -> renderRoller o
     Wall{} -> renderWall o
