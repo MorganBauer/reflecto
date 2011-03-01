@@ -82,6 +82,12 @@ position o = case o of
     Pit {xPos=x,yPos=y} -> (x,y)
     otherwise -> error $ "No implementation for position for GObject: " ++ show o
 
+--this fixes the input files. Input files use coordinates to specify position
+reposition :: GObject -> GObject
+reposition ob = let (i,j) = position ob
+                    (x,y) = gridToFree (round i, round j)
+    in ob{xPos = x, yPos = y}
+
 movep :: GObject -> Bool
 movep ob = case ob of
     Player{} -> True
