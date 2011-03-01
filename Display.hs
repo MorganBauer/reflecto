@@ -17,9 +17,9 @@ import GameLogic
 display :: GameState -> DisplayCallback
 display gstate = do
     clear [ColorBuffer]
-    polygonMode $= (Line,Fill)
+    polygonMode $= (Fill,Fill)
     drawGrid
-    mapM_ renderMObject =<< (get . blocks) gstate
+    mapM_ renderGObject =<< (get . blocks) gstate
     renderPlayer =<< (get . player) gstate
     swapBuffers
 
@@ -33,7 +33,7 @@ grid = [Vertex2 x y | x <- [0,pixelsPerSquare..mapWidth], y <- [0,mapHeight]] ++
        [Vertex2 x y | y <- [0,pixelsPerSquare..mapHeight], x <- [0,mapWidth]]
 
 --draws the player, should happen LAST in display
-renderPlayer :: MObject -> IO ()
+renderPlayer :: GObject -> IO ()
 renderPlayer Player {xPos=x, yPos=y, sightLength=sl, orientation=o, reflected=r} = do
     preservingMatrix $ do
         translate (Vector3 x y 0)
@@ -60,13 +60,15 @@ playerShape = [Vertex2 0 10
               ,Vertex2 (-7) (-5)
               ]
 
-renderMObject :: MObject -> IO ()
-renderMObject o = case o of
+renderGObject :: GObject -> IO ()
+renderGObject o = case o of
     Block{} -> renderBlock o
     Roller{} -> renderRoller o
-    otherwise -> error $ "renderMObject: Unsupported MObject constructor " ++ show o
+    Wall{} -> renderWall o
+    Pit{} -> renderPit o
+    otherwise -> error $ "renderGObject: Unsupported GObject constructor " ++ show o
 
-renderBlock :: MObject -> IO ()
+renderBlock :: GObject -> IO ()
 renderBlock Block {xPos=x, yPos=y, orientation=o, reflected=r} = do
     preservingMatrix $ do
         translate (Vector3 x y 0)
@@ -77,13 +79,13 @@ renderBlock Block {xPos=x, yPos=y, orientation=o, reflected=r} = do
 renderBlock x = error $ "Attempted to render non-block as a block:\n" ++ show x
 
 blockShape :: [Vertex2 GLdouble]
-blockShape = [Vertex2 (-pixelsPerSquare/2) (-pixelsPerSquare/2)
-             ,Vertex2 (-pixelsPerSquare/2) ( pixelsPerSquare/2)
-             ,Vertex2 ( pixelsPerSquare/2) ( pixelsPerSquare/2)
-             ,Vertex2 ( pixelsPerSquare/2) (-pixelsPerSquare/2)
+blockShape = [Vertex2 (-pixelsPerSquare/3) (-pixelsPerSquare/3)
+             ,Vertex2 (-pixelsPerSquare/3) ( pixelsPerSquare/3)
+             ,Vertex2 ( pixelsPerSquare/3) ( pixelsPerSquare/3)
+             ,Vertex2 ( pixelsPerSquare/3) (-pixelsPerSquare/3)
              ]
 
-renderRoller :: MObject -> IO ()
+renderRoller :: GObject -> IO ()
 renderRoller Roller {xPos=x, yPos=y, orientation=o, reflected=r} = do
     preservingMatrix $ do
         translate (Vector3 x y 0)
@@ -101,6 +103,34 @@ rollerShape = [Vertex2 (-pixelsPerSquare/2) 0
               ,Vertex2 ( pixelsPerSquare/3) (-pixelsPerSquare/3)
               ,Vertex2 (-pixelsPerSquare/3) (-pixelsPerSquare/3)
               ]
+
+renderWall Wall{xPos=x,yPos=y} = do
+    preservingMatrix $ do
+        translate (Vector3 x y 0)
+        color (Color3 0.8 0.8 0.8 :: Color3 GLdouble)
+        renderPrimitive Polygon $ mapM_ vertex wallShape
+renderWall x = error $ "Attempted to render non-wall as a wall:\n" ++ show x
+
+wallShape :: [Vertex2 GLdouble]
+wallShape =  [Vertex2 (-pixelsPerSquare/2) (-pixelsPerSquare/2)
+             ,Vertex2 (-pixelsPerSquare/2) ( pixelsPerSquare/2)
+             ,Vertex2 ( pixelsPerSquare/2) ( pixelsPerSquare/2)
+             ,Vertex2 ( pixelsPerSquare/2) (-pixelsPerSquare/2)
+             ]
+
+renderPit Pit{xPos=x,yPos=y} = do
+    preservingMatrix $ do
+        translate (Vector3 x y 0)
+        color (Color3 0 0 0 :: Color3 GLdouble)
+        renderPrimitive Polygon $ mapM_ vertex pitShape
+renderPit x = error $ "Attempted to render non-pit as a pit:\n" ++ show x
+
+pitShape :: [Vertex2 GLdouble]
+pitShape =  [Vertex2 (-pixelsPerSquare/2) (-pixelsPerSquare/2)
+            ,Vertex2 (-pixelsPerSquare/2) ( pixelsPerSquare/2)
+            ,Vertex2 ( pixelsPerSquare/2) ( pixelsPerSquare/2)
+            ,Vertex2 ( pixelsPerSquare/2) (-pixelsPerSquare/2)
+            ]
 
 --reshape callback, takes care of the window in the event
 --  that its shape changes.
