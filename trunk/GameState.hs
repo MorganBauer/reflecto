@@ -57,57 +57,18 @@ initState = do
             , orientation = North
             , reflected = False
             }
-        b1 = Block
-            { xPos = 325
-            , yPos = 425
-            , orientation = North
-            , reflected = False
-            }
-        r1 = Roller
-            { xPos = 325
-            , yPos = 125
-            , orientation = North
-            , reflected = False
-            , moving = Nothing
-            }
-        b2 = Block
-            { xPos = 525
-            , yPos = 125
-            , orientation = North
-            , reflected = False
-            }
-        b3 = Block
-            { xPos = 575
-            , yPos = 575
-            , orientation = North
-            , reflected = False
-            }
-        w1 = Wall
-            { xPos = 25
-            , yPos = 25
-            }
-        w2 = Wall
-            { xPos = 75
-            , yPos = 25
-            }
-        w3 = Wall
-            { xPos = 575
-            , yPos = 475
-            }
-        p1 = Pit
-            { xPos = 125
-            , yPos = 425
-            }
-        p2 = Pit
-            { xPos = 175
-            , yPos = 425
-            }
+    objs <- readLevel "level1"
     ks <- newIORef k
     ps <- newIORef p
-    os <- newIORef [b1,r1,b2,b3,w1,w2,w3,p1,p2]
+    os <- newIORef (map reposition objs)
     return $ GameState
             { player = ps
             , objects = os
             , keyboard = ks
             }
 
+
+readLevel :: String -> IO ([GObject])
+readLevel file = do
+    str <- readFile file    
+    return $ map read $ lines str
