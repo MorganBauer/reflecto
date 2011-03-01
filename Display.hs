@@ -19,7 +19,7 @@ display gstate = do
     clear [ColorBuffer]
     polygonMode $= (Fill,Fill)
     drawGrid
-    mapM_ renderGObject =<< (get . blocks) gstate
+    mapM_ renderGObject =<< (get . objects) gstate
     renderPlayer =<< (get . player) gstate
     swapBuffers
 

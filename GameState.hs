@@ -15,7 +15,7 @@ import GameLogic
 --GameState: the collection of all states of the game
 --      including keyboard, player, and world.
 data GameState = GameState { player :: IORef GObject
-                           , blocks :: IORef [GObject]
+                           , objects :: IORef [GObject]
                            , keyboard :: IORef Keyboard
                            }
 
@@ -51,6 +51,7 @@ initState = do
         p = Player
             { xPos = 200
             , yPos = 200
+            , velocity = Nothing
             , sightLength = 0
             , target = Nothing
             , orientation = North
@@ -103,10 +104,10 @@ initState = do
             }
     ks <- newIORef k
     ps <- newIORef p
-    bs <- newIORef [b1,r1,b2,b3,w1,w2,w3,p1,p2]
+    os <- newIORef [b1,r1,b2,b3,w1,w2,w3,p1,p2]
     return $ GameState
             { player = ps
-            , blocks = bs
+            , objects = os
             , keyboard = ks
             }
 
