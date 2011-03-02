@@ -7,7 +7,7 @@
 
 module GameLogic where
 
-import Graphics.UI.GLUT hiding (position)
+import Graphics.UI.GLUT (GLdouble,GLint)
 import Data.List (find)
 import Data.Maybe (isJust)
 
@@ -108,6 +108,15 @@ pushp ob = case ob of
     Wall{} -> False
     Pit{} -> False
 
+limitedVel :: GObject -> Maybe Orientation -> Maybe Orientation
+limitedVel ob (Just vel) = case ob of
+    Roller{orientation=or} -> project vel or
+
+project :: Orientation -> Orientation -> Maybe Orientation
+project o1 o2 | o2 == o1 || clockwise o2 == o1 || cclockwise o2 == o1 = Just o2
+              | cclockwise (cclockwise2 o2) == o1 || clockwise (clockwise2 o2) == o1 || clockwise4 o2 == o1 = Just $ clockwise4 o2
+              | clockwise2 o2 == o1 || cclockwise2 o2 == o1 = Nothing
+
 moveUpdate :: GObject -> GObject
 moveUpdate ob = if pushp ob && isJust (moving ob)
     then let vel' = vel*1.1
@@ -147,8 +156,15 @@ obstructs (Just ob) Nothing d = case ob of
                              d == 'y' && not (o == North || o == South)
     Wall{} -> True
     Pit{} -> True
+obstructs (Just ob) (Just _) d = case ob of
+    Player{} -> False
+    Start{} -> False
+    End{} -> False
+    Block{} -> True
+    Roller{} -> True
+    Wall{} -> True
+    Pit{} -> True
 obstructs Nothing _ _ = False
-obstructs (Just _) (Just _) _ = True
 
 targetp :: GObject -> Bool
 targetp ob = case ob of
