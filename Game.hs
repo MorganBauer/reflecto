@@ -118,5 +118,6 @@ pushing gstate = do
       else do
         let ob = fromJust mob
             os' = filter (/= ob) os
-        objects gstate $= ob{moving=velocity p} : os'
+            ob' = ob{moving = limitedVel ob $ velocity p}
+        objects gstate $= ob' : os'
 

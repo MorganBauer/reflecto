@@ -62,13 +62,29 @@ playerShape = [Vertex2 0 10
 
 renderGObject :: GObject -> IO ()
 renderGObject o = case o of
-    Start{} -> return ()
-    End{} -> return ()
+    Start{} -> renderStart o
+    End{} -> renderEnd o
     Block{} -> renderBlock o
     Roller{} -> renderRoller o
     Wall{} -> renderWall o
     Pit{} -> renderPit o
     otherwise -> error $ "renderGObject: Unsupported GObject constructor " ++ show o
+
+renderStart :: GObject -> IO ()
+renderStart Start {xPos=x, yPos=y} = do
+    preservingMatrix $ do
+        translate (Vector3 x y 0)
+        color (Color3 0.6 0 0 :: Color3 GLdouble)
+        renderPrimitive Polygon $ mapM_ vertex blockShape
+renderStart x = error $ "Attempted to render non-start as a start:\n" ++ show x
+
+renderEnd :: GObject -> IO ()
+renderEnd End {xPos=x, yPos=y} = do
+    preservingMatrix $ do
+        translate (Vector3 x y 0)
+        color (Color3 0 0.5 0.5 :: Color3 GLdouble)
+        renderPrimitive Polygon $ mapM_ vertex blockShape
+renderEnd x = error $ "Attempted to render non-end as an end:\n" ++ show x
 
 renderBlock :: GObject -> IO ()
 renderBlock Block {xPos=x, yPos=y, orientation=o, reflected=r} = do

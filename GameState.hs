@@ -57,10 +57,15 @@ initState = do
             , orientation = North
             , reflected = False
             }
-    objs <- readLevel "level1"
+    rawObjs <- readLevel "level1"
+    let objs = map reposition rawObjs
+        start = head $ filter isStart objs
     ks <- newIORef k
-    ps <- newIORef p
-    os <- newIORef (map reposition objs)
+    ps <- newIORef p{ xPos = xPos start
+                    , yPos = yPos start
+                    , orientation = orientation start
+                    }
+    os <- newIORef objs
     return $ GameState
             { player = ps
             , objects = os
@@ -71,4 +76,10 @@ initState = do
 readLevel :: String -> IO ([GObject])
 readLevel file = do
     str <- readFile file    
-    return $ map read $ lines str
+    objs <- return $ map read $ lines str
+    if (length . filter isStart) objs /= 1 then error "Multiple start locations unsupported"
+        else return objs
+ 
+isStart o = case o of
+    Start{} -> True
+    otherwise -> False
