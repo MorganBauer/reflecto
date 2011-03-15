@@ -17,6 +17,7 @@ import GameLogic
 data GameState = GameState { player :: IORef GObject
                            , objects :: IORef [GObject]
                            , keyboard :: IORef Keyboard
+                           , level :: IORef Integer
                            }
 
 
@@ -49,14 +50,15 @@ initState = do
             , space' = Up
             }
         p = Player
-            { xPos = 200
-            , yPos = 200
+            { xPos = 0
+            , yPos = 0
             , velocity = Nothing
             , sightLength = 0
             , target = Nothing
             , orientation = North
             , reflected = False
             }
+        l = 1
     rawObjs <- readLevel "level1"
     let objs = map reposition rawObjs
         start = head $ filter isStart objs
@@ -66,10 +68,12 @@ initState = do
                     , orientation = orientation start
                     }
     os <- newIORef objs
+    lvl <- newIORef l
     return $ GameState
             { player = ps
             , objects = os
             , keyboard = ks
+            , level = lvl
             }
 
 

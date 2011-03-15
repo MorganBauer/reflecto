@@ -10,6 +10,7 @@ module Main where
 
 import Graphics.UI.GLUT hiding (initState,position)
 import Control.Monad (liftM)
+import System.Directory
 import Data.Maybe (isJust,fromJust,isNothing)
 
 import GameState
@@ -49,6 +50,7 @@ timer gstate = do
     keyboard gstate $~ (\k@(Keyboard{space=s}) -> k{space'=s})
     keyboard gstate $~ (\k@(Keyboard{qKey=q}) -> k{qKey'=q})
     keyboard gstate $~ (\k@(Keyboard{eKey=e}) -> k{eKey'=e})
+    updateLevel gstate
     postRedisplay Nothing
     addTimerCallback stepTime $ timer gstate
 
@@ -121,3 +123,26 @@ pushing gstate = do
             ob' = ob{moving = limitedVel ob $ velocity p}
         objects gstate $= ob' : os'
 
+updateLevel :: GameState -> IO ()
+updateLevel gstate = do
+    p <- (get . player) gstate
+    os <- (get . objects) gstate
+    let o = intersection (position p) os
+    case o of
+        Just End{} -> do level gstate $~ succ
+                         l <- (get . level) gstate
+                         let filename = "level" ++ show l
+                         b <- doesFileExist filename
+                         if b then do
+                             rawObjs <- readLevel filename
+                             let objs = map reposition rawObjs
+                                 start = head $ filter isStart objs
+                             objects gstate $= objs
+                             player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
+                           else do
+                             rawObjs <- readLevel "win"
+                             let objs = map reposition rawObjs
+                                 start = head $ filter isStart objs
+                             objects gstate $= objs
+                             player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
+        otherwise -> return ()
