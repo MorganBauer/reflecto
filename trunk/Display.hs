@@ -71,20 +71,32 @@ renderGObject o = case o of
     otherwise -> error $ "renderGObject: Unsupported GObject constructor " ++ show o
 
 renderStart :: GObject -> IO ()
+{-
 renderStart Start {xPos=x, yPos=y} = do
     preservingMatrix $ do
         translate (Vector3 x y 0)
         color (Color3 0.6 0 0 :: Color3 GLdouble)
-        renderPrimitive Polygon $ mapM_ vertex blockShape
+        renderPrimitive TriangleStrip $ mapM_ vertex SShape
 renderStart x = error $ "Attempted to render non-start as a start:\n" ++ show x
+-}
+renderStart _ = return ()
 
 renderEnd :: GObject -> IO ()
 renderEnd End {xPos=x, yPos=y} = do
     preservingMatrix $ do
         translate (Vector3 x y 0)
         color (Color3 0 0.5 0.5 :: Color3 GLdouble)
-        renderPrimitive Polygon $ mapM_ vertex blockShape
+        lineWidth $= 4
+        renderPrimitive Lines $ mapM_ vertex xShape
+        lineWidth $= 1
 renderEnd x = error $ "Attempted to render non-end as an end:\n" ++ show x
+
+xShape :: [Vertex2 GLdouble]
+xShape = [Vertex2 (-pixelsPerSquare/2.3) ( pixelsPerSquare/2.3)
+         ,Vertex2 ( pixelsPerSquare/2.3) (-pixelsPerSquare/2.3)
+         ,Vertex2 (-pixelsPerSquare/2.3) (-pixelsPerSquare/2.3)
+         ,Vertex2 ( pixelsPerSquare/2.3) ( pixelsPerSquare/2.3)
+         ]
 
 renderBlock :: GObject -> IO ()
 renderBlock Block {xPos=x, yPos=y, orientation=o, reflected=r} = do
