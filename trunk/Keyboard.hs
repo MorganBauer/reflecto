@@ -21,6 +21,7 @@ keyboardMouse kstate (Char c) pos _ _ = case c of
     'd'   -> kstate $~ (\k -> k{dKey=pos})
     'q'   -> kstate $~ (\k -> k{qKey=pos})
     'e'   -> kstate $~ (\k -> k{eKey=pos})
+    'r'   -> kstate $~ (\k -> k{rKey=pos})
     ' '   -> kstate $~ (\k -> k{space=pos})
     '\27' -> exitWith ExitSuccess
     _     -> return ()
