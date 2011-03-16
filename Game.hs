@@ -47,6 +47,8 @@ timer gstate = do
     reflecto gstate
     pushing gstate
     objects gstate $~ map moveUpdate
+    objects gstate $~ activeUpdate p
+    objects gstate $~ doorUpdate
     keyboard gstate $~ (\k@(Keyboard{space=s}) -> k{space'=s})
     keyboard gstate $~ (\k@(Keyboard{qKey=q}) -> k{qKey'=q})
     keyboard gstate $~ (\k@(Keyboard{eKey=e}) -> k{eKey'=e})
@@ -67,10 +69,10 @@ updatePlayer k os p = p{ xPos = x
              if and [aKey k == Up, dKey k == Down] then (xPos p) + vel else xPos p
         y' = if and [sKey k == Down, wKey k == Up] then (yPos p) - vel else
              if and [sKey k == Up, wKey k == Down] then (yPos p) + vel else yPos p
-        obstaclex = intersection (x', yPos p) os
-        obstaclex' = intersection (x'+pixelsPerSquare * signum (x'-xPos p), yPos p) os
-        obstacley = intersection (xPos p, y') os
-        obstacley' = intersection (xPos p, y'+pixelsPerSquare * signum (y'-yPos p)) os
+        obstaclex = intersection (freeToGrid (x', yPos p)) os
+        obstaclex' = intersection (freeToGrid (x'+pixelsPerSquare * signum (x'-xPos p), yPos p)) os
+        obstacley = intersection (freeToGrid (xPos p, y')) os
+        obstacley' = intersection (freeToGrid (xPos p, y'+pixelsPerSquare * signum (y'-yPos p))) os
         x = if or [x' > mapWidth,  x' < 0, obstructs obstaclex obstaclex' 'x'] then xPos p else x'
         y = if or [y' > mapHeight, y' < 0, obstructs obstacley obstacley' 'y'] then yPos p else y'
         t = findTarget os (viewCheckList p{xPos=x,yPos=y,orientation=o})
@@ -115,34 +117,34 @@ pushing :: GameState -> IO ()
 pushing gstate = do
     p <- (get . player) gstate
     os <- (get . objects) gstate
-    let mob = intersection (position p) os
-    if not $ and [isJust mob, pushp (fromJust mob), isJust (velocity p)] then return ()
+    let mob = intersection (coords p) os
+    if not $ and [not $ null mob, all pushp mob, isJust (velocity p)] then return ()
       else do
-        let ob = fromJust mob
-            os' = filter (/= ob) os
-            ob' = ob{moving = limitedVel ob $ velocity p}
-        objects gstate $= ob' : os'
+        let os' = filter (not . (`elem` mob)) os
+            setMoving o = o{moving = limitedVel o $ velocity p}
+            ob' = map setMoving mob
+        objects gstate $= ob' ++ os'
 
 updateLevel :: GameState -> IO ()
 updateLevel gstate = do
     p <- (get . player) gstate
-    os <- (get . objects) gstate
-    let o = intersection (position p) os
-    case o of
-        Just End{} -> do level gstate $~ succ
-                         l <- (get . level) gstate
-                         let filename = "level" ++ show l
-                         b <- doesFileExist filename
-                         if b then do
-                             rawObjs <- readLevel filename
-                             let objs = map reposition rawObjs
-                                 start = head $ filter isStart objs
-                             objects gstate $= objs
-                             player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
-                           else do
-                             rawObjs <- readLevel "win"
-                             let objs = map reposition rawObjs
-                                 start = head $ filter isStart objs
-                             objects gstate $= objs
-                             player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
-        otherwise -> return ()
+    o <- (get . objects) gstate
+    let os = intersection (coords p) o
+    if any isEnd os 
+        then do level gstate $~ succ
+                l <- (get . level) gstate
+                let filename = "level" ++ show l
+                b <- doesFileExist filename
+                if b then do
+                    rawObjs <- readLevel filename
+                    let objs = map reposition rawObjs
+                        start = head $ filter isStart objs
+                    objects gstate $= objs
+                    player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
+                  else do
+                    rawObjs <- readLevel "win"
+                    let objs = map reposition rawObjs
+                        start = head $ filter isStart objs
+                    objects gstate $= objs
+                    player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
+        else return ()

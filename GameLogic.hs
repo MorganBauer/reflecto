@@ -57,8 +57,20 @@ data GObject = Player { xPos :: GLdouble
                     } |
                Pit { xPos :: GLdouble
                    , yPos :: GLdouble
-                   }
+                   } |
+               Door { xPos :: GLdouble
+                    , yPos :: GLdouble
+                    , orientation :: Orientation
+                    , defaultClosed :: Bool
+                    , closed :: Bool
+                    , triggers :: [(GLint,GLint)]
+                    } |
+               Plate { xPos :: GLdouble
+                     , yPos :: GLdouble
+                     , active :: Bool
+                     }
             deriving (Eq,Read,Show)
+
 
 coords :: GObject -> (GLint, GLint)
 coords o = case o of
@@ -69,6 +81,8 @@ coords o = case o of
     Roller {xPos=x,yPos=y} -> freeToGrid (x,y)
     Wall {xPos=x,yPos=y} -> freeToGrid (x,y)
     Pit {xPos=x,yPos=y} -> freeToGrid (x,y)
+    Door {xPos=x,yPos=y} -> freeToGrid (x,y)
+    Plate {xPos=x,yPos=y} -> freeToGrid (x,y)
     otherwise -> error $ "No implementation for coords for GObject: " ++ show o
 
 position :: GObject -> (GLdouble, GLdouble)
@@ -80,6 +94,8 @@ position o = case o of
     Roller {xPos=x,yPos=y} -> (x,y)
     Wall {xPos=x,yPos=y} -> (x,y)
     Pit {xPos=x,yPos=y} -> (x,y)
+    Door {xPos=x,yPos=y} -> (x,y)
+    Plate {xPos=x,yPos=y} -> (x,y)
     otherwise -> error $ "No implementation for position for GObject: " ++ show o
 
 --this fixes the input files. Input files use coordinates to specify position
@@ -97,6 +113,8 @@ movep ob = case ob of
     Roller{} -> True
     Wall{} -> False
     Pit{} -> False
+    Door{} -> False
+    Plate{} -> False
 
 pushp :: GObject -> Bool
 pushp ob = case ob of
@@ -107,6 +125,8 @@ pushp ob = case ob of
     Roller{} -> True
     Wall{} -> False
     Pit{} -> False
+    Door{} -> False
+    Plate{} -> False
 
 limitedVel :: GObject -> Maybe Orientation -> Maybe Orientation
 limitedVel ob (Just vel) = case ob of
@@ -146,25 +166,32 @@ move ob (x,y) or = let (x',y') = (gridToFree . freeToGrid) (x,y) in
     Roller{} -> ob {xPos=x',yPos=y',orientation=or}
     otherwise -> error $ "No implementation for move for GObject: " ++ show ob
 
-obstructs :: Maybe GObject -> Maybe GObject -> Char -> Bool
-obstructs (Just ob) Nothing d = case ob of
-    Player{} -> False
-    Start{} -> False
-    End{} -> False
+obstructs :: [GObject] -> [GObject] -> Char -> Bool
+obstructs [] _ _ = False
+obstructs (ob:obs) k d = case ob of
+    Player{} -> obstructs obs k d
+    Start{} -> obstructs obs k d
+    End{} -> obstructs obs k d
     Block{} -> True
-    Roller{orientation=o} -> d == 'x' && not (o == East || o == West) ||
-                             d == 'y' && not (o == North || o == South)
+    Roller{orientation=o} -> any (not . coverable) k || 
+                d == 'x' && not (o == East || o == West) ||
+                d == 'y' && not (o == North || o == South) || 
+                obstructs obs k d
     Wall{} -> True
     Pit{} -> True
-obstructs (Just ob) (Just _) d = case ob of
-    Player{} -> False
-    Start{} -> False
-    End{} -> False
-    Block{} -> True
-    Roller{} -> True
-    Wall{} -> True
-    Pit{} -> True
-obstructs Nothing _ _ = False
+    Door{closed=c} -> c || obstructs obs k d
+    Plate{} -> obstructs obs k d
+
+coverable o = case o of
+    Player{} -> True
+    Start{} -> True
+    End{} -> True
+    Block{} -> False
+    Roller{} -> False
+    Wall{} -> False
+    Pit{} -> False
+    Door{closed=c} -> not c
+    Plate{} -> True
 
 targetp :: GObject -> Bool
 targetp ob = case ob of
@@ -175,6 +202,30 @@ targetp ob = case ob of
     Roller{} -> True
     Wall{} -> True
     Pit{} -> False
+    Door{closed=c} -> c
+    Plate{} -> False
+
+doorUpdate os = map (doorUpdate' os) os
+
+doorUpdate' os o = case o of
+    Door {defaultClosed=dfs,triggers=ts} -> o{closed = checkTriggers os' dfs}
+        where os' = concatMap (flip intersection os) ts --all objects that exist at the point of the trigger
+    otherwise -> o
+
+checkTriggers :: [GObject] -> Bool -> Bool
+checkTriggers os = if any isActive os then not else id
+
+isActive o = if hasActivation o then active o else False
+
+hasActivation o = case o of
+    Plate{} -> True
+    otherwise -> False
+
+activeUpdate p os = map (activeUpdate' (p:os)) os
+
+activeUpdate' os o = case o of
+    Plate{} -> o{active = not $ null $ filter (/= o) $ intersection (coords o) os}
+    otherwise -> o
 
 edgeShape :: GObject -> (GLdouble, GLdouble) -> Orientation -> GLdouble 
 edgeShape ob (x,y) or = case ob of
@@ -187,9 +238,12 @@ edgeShape ob (x,y) or = case ob of
     Wall{xPos=xc,yPos=yc} -> (if or `elem` [North,South,East,West]
                             then 1 else (sqrt 2)) *
                     (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
+    Door{xPos=xc,yPos=yc} -> (if or `elem` [North,South,East,West]
+                            then 1 else (sqrt 2)) *
+                    (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
     otherwise -> error $ "No implementation for edgeShape for GObject: " ++ show ob
 
---an GObject's orientation
+--a GObject's orientation
 data Orientation = North
                  | Northwest
                  | West
@@ -249,9 +303,8 @@ toAngle orientation = case orientation of
 toReflect :: Bool -> GLdouble
 toReflect r = if r then 180 else 0
 
-intersection :: (GLdouble,GLdouble) -> [GObject] -> Maybe GObject
-intersection p os = flip find os (\o -> pc == coords o)
-    where pc = freeToGrid p
+intersection :: (GLint,GLint) -> [GObject] -> [GObject]
+intersection p os = flip filter os (\o -> p == coords o)
 
 freeToGrid :: (GLdouble,GLdouble) -> (GLint,GLint)
 freeToGrid (x,y) = (trunc x, trunc y)
