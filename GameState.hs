@@ -30,6 +30,7 @@ data Keyboard = Keyboard { wKey
                          , qKey'
                          , eKey
                          , eKey'
+                         , rKey
                          , space
                          , space' :: KeyState
                          }
@@ -46,6 +47,7 @@ initState = do
             , qKey'  = Up
             , eKey   = Up
             , eKey'  = Up
+            , rKey   = Up
             , space  = Up
             , space' = Up
             }

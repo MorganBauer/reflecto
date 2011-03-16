@@ -127,6 +127,7 @@ pushing gstate = do
 
 updateLevel :: GameState -> IO ()
 updateLevel gstate = do
+    k <- (get . keyboard) gstate
     p <- (get . player) gstate
     o <- (get . objects) gstate
     let os = intersection (coords p) o
@@ -147,4 +148,13 @@ updateLevel gstate = do
                         start = head $ filter isStart objs
                     objects gstate $= objs
                     player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
+        else return ()
+    if rKey k == Down
+        then do l <- (get . level) gstate
+                let filename = "level" ++ show l
+                rawObjs <- readLevel filename
+                let objs = map reposition rawObjs
+                    start = head $ filter isStart objs
+                objects gstate $= objs
+                player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
         else return ()

@@ -205,7 +205,7 @@ renderPlate Plate{xPos=x,yPos=y,active=a} = do
     preservingMatrix $ do
         translate (Vector3 x y 0)
         if a 
-          then color (Color3 0   0.9 0 :: Color3 GLdouble)
+          then color (Color3 0   0.6 0 :: Color3 GLdouble)
           else color (Color3 0.5 0.3 0 :: Color3 GLdouble)
         renderPrimitive Polygon $ mapM_ vertex plateShape
 
