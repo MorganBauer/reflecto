@@ -87,3 +87,7 @@ readLevel file = do
 isStart o = case o of
     Start{} -> True
     otherwise -> False
+
+isEnd o = case o of
+    End{} -> True
+    otherwise -> False

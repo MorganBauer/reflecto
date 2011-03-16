@@ -19,7 +19,8 @@ display gstate = do
     clear [ColorBuffer]
     polygonMode $= (Fill,Fill)
     drawGrid
-    mapM_ renderGObject =<< (get . objects) gstate
+    mapM_ renderLowGObject =<< (get . objects) gstate
+    mapM_ renderHighGObject =<< (get . objects) gstate
     renderPlayer =<< (get . player) gstate
     swapBuffers
 
@@ -60,25 +61,23 @@ playerShape = [Vertex2 0 10
               ,Vertex2 (-7) (-5)
               ]
 
-renderGObject :: GObject -> IO ()
-renderGObject o = case o of
+renderLowGObject :: GObject -> IO ()
+renderLowGObject o = case o of
     Start{} -> renderStart o
     End{} -> renderEnd o
+    Pit{} -> renderPit o
+    Plate{} -> renderPlate o
+    _ -> return ()
+
+renderHighGObject :: GObject -> IO ()
+renderHighGObject o = case o of
     Block{} -> renderBlock o
     Roller{} -> renderRoller o
     Wall{} -> renderWall o
-    Pit{} -> renderPit o
-    otherwise -> error $ "renderGObject: Unsupported GObject constructor " ++ show o
+    Door{} -> renderDoor o
+    _ -> return ()
 
 renderStart :: GObject -> IO ()
-{-
-renderStart Start {xPos=x, yPos=y} = do
-    preservingMatrix $ do
-        translate (Vector3 x y 0)
-        color (Color3 0.6 0 0 :: Color3 GLdouble)
-        renderPrimitive TriangleStrip $ mapM_ vertex SShape
-renderStart x = error $ "Attempted to render non-start as a start:\n" ++ show x
--}
 renderStart _ = return ()
 
 renderEnd :: GObject -> IO ()
@@ -106,14 +105,32 @@ renderBlock Block {xPos=x, yPos=y, orientation=o, reflected=r} = do
         rotate (toReflect r) (Vector3 0 1 0)
         color (Color3 0.5 0.5 0.5 :: Color3 GLdouble)
         renderPrimitive Polygon $ mapM_ vertex blockShape
+        color (Color3 0.6 0.6 0.6 :: Color3 GLdouble)
+        renderPrimitive Polygon $ mapM_ vertex blockEdge
+        rotate (90::GLdouble) (Vector3 0 0 1)
+        color (Color3 0.55 0.55 0.55 :: Color3 GLdouble)
+        renderPrimitive Polygon $ mapM_ vertex blockEdge
+        rotate (90::GLdouble) (Vector3 0 0 1)
+        color (Color3 0.4 0.4 0.4 :: Color3 GLdouble)
+        renderPrimitive Polygon $ mapM_ vertex blockEdge
+        rotate (90::GLdouble) (Vector3 0 0 1)
+        color (Color3 0.45 0.45 0.45 :: Color3 GLdouble)
+        renderPrimitive Polygon $ mapM_ vertex blockEdge
 renderBlock x = error $ "Attempted to render non-block as a block:\n" ++ show x
 
 blockShape :: [Vertex2 GLdouble]
-blockShape = [Vertex2 (-pixelsPerSquare/3) (-pixelsPerSquare/3)
-             ,Vertex2 (-pixelsPerSquare/3) ( pixelsPerSquare/3)
-             ,Vertex2 ( pixelsPerSquare/3) ( pixelsPerSquare/3)
-             ,Vertex2 ( pixelsPerSquare/3) (-pixelsPerSquare/3)
+blockShape = [Vertex2 (-pixelsPerSquare/4) (-pixelsPerSquare/4)
+             ,Vertex2 (-pixelsPerSquare/4) ( pixelsPerSquare/4)
+             ,Vertex2 ( pixelsPerSquare/4) ( pixelsPerSquare/4)
+             ,Vertex2 ( pixelsPerSquare/4) (-pixelsPerSquare/4)
              ]
+
+blockEdge :: [Vertex2 GLdouble]
+blockEdge = [Vertex2 (-pixelsPerSquare/3) (pixelsPerSquare/3)
+            ,Vertex2 ( pixelsPerSquare/3) (pixelsPerSquare/3)
+            ,Vertex2 ( pixelsPerSquare/4) (pixelsPerSquare/4)
+            ,Vertex2 (-pixelsPerSquare/4) (pixelsPerSquare/4)
+            ]
 
 renderRoller :: GObject -> IO ()
 renderRoller Roller {xPos=x, yPos=y, orientation=o, reflected=r} = do
@@ -161,6 +178,43 @@ pitShape =  [Vertex2 (-pixelsPerSquare/2) (-pixelsPerSquare/2)
             ,Vertex2 ( pixelsPerSquare/2) ( pixelsPerSquare/2)
             ,Vertex2 ( pixelsPerSquare/2) (-pixelsPerSquare/2)
             ]
+
+renderDoor Door{xPos=x,yPos=y,orientation=o,closed=c} = do
+    preservingMatrix $ do
+        translate (Vector3 x y 0)
+        rotate (toAngle o) (Vector3 0 0 1)
+        color (Color3 0.2 0.2 0.2 :: Color3 GLdouble)
+        lineWidth $= 4
+        renderPrimitive Lines $ mapM_ vertex (if c then doorClosedShape else doorOpenShape)
+        lineWidth $= 1
+renderDoor x = error $ "Attempted to render non-door as a door:\n" ++ show x
+
+doorClosedShape :: [Vertex2 GLdouble]
+doorClosedShape = [Vertex2 (-pixelsPerSquare/2) 0
+                  ,Vertex2 ( pixelsPerSquare/2) 0
+                  ]
+
+doorOpenShape :: [Vertex2 GLdouble]
+doorOpenShape = [Vertex2 (-pixelsPerSquare/2) 0
+                  ,Vertex2 (-pixelsPerSquare/2) (-pixelsPerSquare/2)
+                  ,Vertex2 ( pixelsPerSquare/2) (-pixelsPerSquare/2)
+                  ,Vertex2 ( pixelsPerSquare/2) 0
+                  ]
+
+renderPlate Plate{xPos=x,yPos=y,active=a} = do
+    preservingMatrix $ do
+        translate (Vector3 x y 0)
+        if a 
+          then color (Color3 0   0.9 0 :: Color3 GLdouble)
+          else color (Color3 0.5 0.3 0 :: Color3 GLdouble)
+        renderPrimitive Polygon $ mapM_ vertex plateShape
+
+plateShape :: [Vertex2 GLdouble]
+plateShape = [Vertex2 (-pixelsPerSquare/2) (-pixelsPerSquare/2)
+             ,Vertex2 (-pixelsPerSquare/2) ( pixelsPerSquare/2)
+             ,Vertex2 ( pixelsPerSquare/2) ( pixelsPerSquare/2)
+             ,Vertex2 ( pixelsPerSquare/2) (-pixelsPerSquare/2)
+             ]
 
 --reshape callback, takes care of the window in the event
 --  that its shape changes.

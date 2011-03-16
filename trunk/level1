@@ -1,11 +1,11 @@
 Start { xPos = 13, yPos = 1 , orientation = North }
 End { xPos = 2 , yPos = 10}
+Door { xPos = 11, yPos = 9 , orientation = East, defaultClosed = True, closed = True, triggers = [(13,9)]}
+Plate { xPos = 13, yPos = 9 , active = False }
 Block { xPos = 2 , yPos = 9 , orientation = North , reflected = False }
 Block { xPos = 2 , yPos = 2 , orientation = North , reflected = False }
 Block { xPos = 9 , yPos = 2 , orientation = North , reflected = False }
-Block { xPos = 11, yPos = 8 , orientation = North , reflected = False }
-Block { xPos = 11, yPos = 9 , orientation = North , reflected = False }
-Block { xPos = 11, yPos = 10, orientation = North , reflected = False }
+Block { xPos = 9 , yPos = 9 , orientation = North , reflected = False }
 Wall { xPos = 11, yPos = 1 }
 Wall { xPos = 11, yPos = 2 }
 Wall { xPos = 11, yPos = 3 }
@@ -13,6 +13,8 @@ Wall { xPos = 11, yPos = 4 }
 Wall { xPos = 11, yPos = 5 }
 Wall { xPos = 11, yPos = 6 }
 Wall { xPos = 11, yPos = 7 }
+Wall { xPos = 11, yPos = 8 }
+Wall { xPos = 11, yPos = 10}
 Wall { xPos = 4 , yPos = 10}
 Wall { xPos = 4 , yPos = 9 }
 Wall { xPos = 4 , yPos = 8 }
