@@ -12,6 +12,7 @@ import Graphics.UI.GLUT hiding (initState,position)
 import Control.Monad (liftM)
 import System.Directory
 import Data.Maybe (isJust,fromJust,isNothing)
+import Debug.Trace
 
 import GameState
 import Display
@@ -102,16 +103,17 @@ reflecto gstate = do
         let t = (fromJust . target) p --note: fromJust is safe because of isJust check above.
             (px,py) = position t
             oo = orientation t
+            r = reflected t
             po = orientation p
             (ox,oy) = (xPos p, yPos p)
-            obj = move t (ox,oy) (reorient oo (orientation p))
-            os' = obj{reflected=not(reflected obj)} : filter (/= t) os
+            obj = move t (ox,oy) (reorient oo (orientation p)) (not r)
+            os' = obj : filter (/= t) os
         player gstate $= p{xPos=px,yPos=py,orientation=clockwise4 po,reflected=not $ reflected p}
         objects gstate $= os'
     where
-        reorient oo po = if po `elem` [North,South] then clockwise4 oo else
-                         if po `elem` [Northeast,Southwest] then clockwise2 oo else
-                         if po `elem` [East,West] then oo else cclockwise2 oo
+        reorient oo po = if po == oo || po == clockwise4 oo then clockwise4 oo else
+                         if cclockwise po == oo || cclockwise po == clockwise4 oo then cclockwise2 oo else
+                         if clockwise po == oo || clockwise po == clockwise4 oo then clockwise2 oo else oo
 
 pushing :: GameState -> IO ()
 pushing gstate = do

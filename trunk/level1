@@ -2,6 +2,7 @@ Start { xPos = 13, yPos = 1 , orientation = North }
 End { xPos = 2 , yPos = 10}
 Door { xPos = 11, yPos = 9 , orientation = East, defaultClosed = True, closed = True, triggers = [(13,9)]}
 Plate { xPos = 13, yPos = 9 , active = False }
+Mirror { xPos = 13, yPos = 5, orientation = Northeast, reflected = False }
 Block { xPos = 2 , yPos = 9 , orientation = North , reflected = False }
 Block { xPos = 2 , yPos = 2 , orientation = North , reflected = False }
 Block { xPos = 9 , yPos = 2 , orientation = North , reflected = False }

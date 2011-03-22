@@ -23,6 +23,9 @@ mapHeight = 600
 vel :: (Num a) => a
 vel = 3
 
+data Source = PlayerSource | LaserSource
+    deriving (Eq,Show,Read)
+
 --GObject: Game Objects, Objects with various ways of interacting with the player.
 data GObject = Player { xPos :: GLdouble 
                       , yPos :: GLdouble
@@ -68,7 +71,17 @@ data GObject = Player { xPos :: GLdouble
                Plate { xPos :: GLdouble
                      , yPos :: GLdouble
                      , active :: Bool
-                     }
+                     } |
+               Mirror  { xPos :: GLdouble
+                      , yPos :: GLdouble
+                      , orientation :: Orientation
+                      , reflected :: Bool
+                      } |
+               Beam { xPos :: GLdouble
+                    , yPos :: GLdouble
+                    , orientation :: Orientation
+                    , source :: Source
+                    }
             deriving (Eq,Read,Show)
 
 
@@ -83,6 +96,8 @@ coords o = case o of
     Pit {xPos=x,yPos=y} -> freeToGrid (x,y)
     Door {xPos=x,yPos=y} -> freeToGrid (x,y)
     Plate {xPos=x,yPos=y} -> freeToGrid (x,y)
+    Mirror {xPos=x,yPos=y} -> freeToGrid (x,y)
+    Beam {xPos=x,yPos=y} -> freeToGrid (x,y)
     otherwise -> error $ "No implementation for coords for GObject: " ++ show o
 
 position :: GObject -> (GLdouble, GLdouble)
@@ -96,6 +111,8 @@ position o = case o of
     Pit {xPos=x,yPos=y} -> (x,y)
     Door {xPos=x,yPos=y} -> (x,y)
     Plate {xPos=x,yPos=y} -> (x,y)
+    Mirror {xPos=x,yPos=y} -> (x,y)
+    Beam {xPos=x,yPos=y} -> (x,y)
     otherwise -> error $ "No implementation for position for GObject: " ++ show o
 
 --this fixes the input files. Input files use coordinates to specify position
@@ -115,6 +132,8 @@ movep ob = case ob of
     Pit{} -> False
     Door{} -> False
     Plate{} -> False
+    Mirror{} -> True
+    Beam{} -> False
 
 pushp :: GObject -> Bool
 pushp ob = case ob of
@@ -127,6 +146,8 @@ pushp ob = case ob of
     Pit{} -> False
     Door{} -> False
     Plate{} -> False
+    Mirror{} -> False
+    Beam{} -> False
 
 limitedVel :: GObject -> Maybe Orientation -> Maybe Orientation
 limitedVel ob (Just vel) = case ob of
@@ -158,12 +179,13 @@ moveUpdate ob = if pushp ob && isJust (moving ob)
         in ob'
     else ob
 
-move :: GObject -> (GLdouble, GLdouble) -> Orientation -> GObject 
-move ob (x,y) or = let (x',y') = (gridToFree . freeToGrid) (x,y) in
+move :: GObject -> (GLdouble, GLdouble) -> Orientation -> Bool -> GObject 
+move ob (x,y) or ref = let (x',y') = (gridToFree . freeToGrid) (x,y) in
   case ob of
-    Player{} -> ob {xPos=x',yPos=y',orientation=or}
-    Block{} -> ob {xPos=x',yPos=y',orientation=or}
-    Roller{} -> ob {xPos=x',yPos=y',orientation=or}
+    Player{} -> ob {xPos=x',yPos=y',orientation=or,reflected=ref}
+    Block{} -> ob {xPos=x',yPos=y',orientation=or,reflected=ref}
+    Roller{} -> ob {xPos=x',yPos=y',orientation=or,reflected=ref}
+    Mirror{} -> ob {xPos=x',yPos=y',orientation=or,reflected=ref}
     otherwise -> error $ "No implementation for move for GObject: " ++ show ob
 
 obstructs :: [GObject] -> [GObject] -> Char -> Bool
@@ -181,6 +203,8 @@ obstructs (ob:obs) k d = case ob of
     Pit{} -> True
     Door{closed=c} -> c || obstructs obs k d
     Plate{} -> obstructs obs k d
+    Mirror{} -> True
+    Beam{} -> obstructs obs k d
 
 coverable o = case o of
     Player{} -> True
@@ -192,6 +216,8 @@ coverable o = case o of
     Pit{} -> False
     Door{closed=c} -> not c
     Plate{} -> True
+    Mirror{} -> False
+    Beam{} -> True
 
 targetp :: GObject -> Bool
 targetp ob = case ob of
@@ -204,6 +230,8 @@ targetp ob = case ob of
     Pit{} -> False
     Door{closed=c} -> c
     Plate{} -> False
+    Mirror{} -> True
+    Beam{} -> False
 
 doorUpdate os = map (doorUpdate' os) os
 
@@ -239,6 +267,9 @@ edgeShape ob (x,y) or = case ob of
                             then 1 else (sqrt 2)) *
                     (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
     Door{xPos=xc,yPos=yc} -> (if or `elem` [North,South,East,West]
+                            then 1 else (sqrt 2)) *
+                    (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
+    Mirror{xPos=xc,yPos=yc} -> (if or `elem` [North,South,East,West]
                             then 1 else (sqrt 2)) *
                     (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
     otherwise -> error $ "No implementation for edgeShape for GObject: " ++ show ob
@@ -314,10 +345,10 @@ gridToFree :: (GLint,GLint) -> (GLdouble,GLdouble)
 gridToFree (x,y) = (fl x, fl y)
     where fl z = pixelsPerSquare * (0.5 + fromIntegral z)
 
---creates a list of squares through which the player's line of sight passes.
--- used for switch detection
+--creates a list of squares through which the object's line of sight passes.
+-- used for beam termination and redirection
 viewCheckList :: GObject -> [(GLint,GLint)]
-viewCheckList Player{xPos=x,yPos=y,orientation=o,reflected=r} = case o of
+viewCheckList obj = case o of
     North -> [(x',j) | j <- [y'..h]]
     South -> [(x',j) | j <- [y',(y'-1)..0]]
     East  -> [(i,y') | i <- [x'..w]]
@@ -334,7 +365,10 @@ viewCheckList Player{xPos=x,yPos=y,orientation=o,reflected=r} = case o of
     Southwest -> if pixelsPerSquare-rx > pixelsPerSquare-ry
         then [(x'-i-j,y'-i) | i <- [0..min (y') (x')], j <- [0,1]]
         else [(x'-i,y'-i-j) | i <- [0..min (y') (x')], j <- [0,1]] 
-    where c = freeToGrid (x,y)
+    where x = xPos obj
+          y = yPos obj
+          o = orientation obj
+          c = freeToGrid (x,y)
           x' = fst c --the x coordinate on the grid
           y' = snd c --the y coordinate ...
           m = freeToGrid (mapWidth-1,mapHeight-1)
@@ -342,7 +376,6 @@ viewCheckList Player{xPos=x,yPos=y,orientation=o,reflected=r} = case o of
           h = snd m
           rx = rem (floor x) pixelsPerSquare --x relative to the current square
           ry = rem (floor y) pixelsPerSquare --y relative ...
-viewCheckList x = error $ "Attempted to find LOS for nonplayer GObject:\n" ++ show x
 
 findTarget :: [GObject] -> [(GLint,GLint)] -> Maybe GObject
 findTarget os (i:is) = case find (\x -> targetp x && i == coords x) os of
