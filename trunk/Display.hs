@@ -20,6 +20,7 @@ display gstate = do
     polygonMode $= (Fill,Fill)
     drawGrid
     mapM_ renderLowGObject =<< (get . objects) gstate
+    mapM_ renderMedGObject =<< (get . objects) gstate
     mapM_ renderHighGObject =<< (get . objects) gstate
     renderPlayer =<< (get . player) gstate
     swapBuffers
@@ -69,6 +70,11 @@ renderLowGObject o = case o of
     Plate{} -> renderPlate o
     _ -> return ()
 
+renderMedGObject :: GObject -> IO ()
+renderMedGObject o = case o of
+    Beam {} -> renderBeam o
+    _ -> return ()
+
 renderHighGObject :: GObject -> IO ()
 renderHighGObject o = case o of
     Block{} -> renderBlock o
@@ -76,6 +82,8 @@ renderHighGObject o = case o of
     Wall{} -> renderWall o
     Door{} -> renderDoor o
     Mirror{} -> renderMirror o
+    Diode{} -> renderDiode o
+    Sensor{} -> renderSensor o
     _ -> return ()
 
 renderStart :: GObject -> IO ()
@@ -229,7 +237,7 @@ renderMirror Mirror{xPos=x,yPos=y,orientation=o,reflected=r} = do
         renderPrimitive Lines $ mapM_ vertex faceShape
         lineWidth $= 1
     where backShape = if o `elem` [North,East,South,West] then mirrorBackSt else mirrorBackDi
-          faceShape = if o `elem` [North,East,South,West] then mirrorFaceSt else mirrorFaceDi
+          faceShape = if o `elem` [North,East,South,West] then lineSt else lineDi
 
 mirrorBackSt :: [Vertex2 GLdouble]
 mirrorBackSt = [Vertex2 (-pixelsPerSquare/2) 0
@@ -242,15 +250,56 @@ mirrorBackDi = [Vertex2 (-pixelsPerSquare/sqrt 2) 0
                ,Vertex2 ( pixelsPerSquare/sqrt 2) 0
                ,Vertex2 0 (-pixelsPerSquare/sqrt 2)
                ]
-mirrorFaceSt :: [Vertex2 GLdouble]
-mirrorFaceSt = [Vertex2 (-pixelsPerSquare/2) 0
-               ,Vertex2 ( pixelsPerSquare/2) 0
-               ]
-mirrorFaceDi :: [Vertex2 GLdouble]
-mirrorFaceDi = [Vertex2 (-pixelsPerSquare/sqrt 2) 0
-               ,Vertex2 ( pixelsPerSquare/sqrt 2) 0
-               ]
+lineSt :: [Vertex2 GLdouble]
+lineSt = [Vertex2 (-pixelsPerSquare/2) 0
+         ,Vertex2 ( pixelsPerSquare/2) 0
+         ]
+lineDi :: [Vertex2 GLdouble]
+lineDi = [Vertex2 (-pixelsPerSquare/sqrt 2) 0
+         ,Vertex2 ( pixelsPerSquare/sqrt 2) 0
+         ]
 
+renderBeam Beam{xPos=x,yPos=y,orientation=o,sightLength=sl} = do
+    preservingMatrix $ do
+        translate (Vector3 x y 0)
+        rotate (toAngle o) (Vector3 0 0 1)
+        color (Color3 1.0 0.7 0 :: Color3 GLdouble)
+        renderPrimitive Lines $ do
+            vertex (Vertex2 0 0 :: Vertex2 GLdouble)
+            vertex (Vertex2 0 (sl+extend))
+    where beamShape = if o `elem` [North,East,South,West] then lineSt else lineDi
+          extend = pixelsPerSquare / if o `elem` [North,East,South,West] then 2 else sqrt 2
+
+renderDiode Diode{xPos=x,yPos=y,orientation=o} = do
+    preservingMatrix $ do
+        translate (Vector3 x y 0)
+        rotate (toAngle o) (Vector3 0 0 1)
+        color (Color3 0.1 0.1 0.1 :: Color3 GLdouble)
+        renderPrimitive Polygon $ mapM_ vertex diodeShape
+        color (Color3 1.0 0.7 0 :: Color3 GLdouble)
+        renderPrimitive Lines $ do
+            vertex (Vertex2 0 0 :: Vertex2 GLdouble)
+            vertex (Vertex2 0 (pixelsPerSquare / sqrt 2)::Vertex2 GLdouble)
+
+diodeShape :: [Vertex2 GLdouble]
+diodeShape = [Vertex2 (-pixelsPerSquare/2) ( pixelsPerSquare*e)
+             ,Vertex2 (-pixelsPerSquare/2) (-pixelsPerSquare*e)
+             ,Vertex2 (-pixelsPerSquare*e) (-pixelsPerSquare/2)
+             ,Vertex2 ( pixelsPerSquare*e) (-pixelsPerSquare/2)
+             ,Vertex2 ( pixelsPerSquare/2) (-pixelsPerSquare*e)
+             ,Vertex2 ( pixelsPerSquare/2) ( pixelsPerSquare*e)
+             ,Vertex2 ( pixelsPerSquare*e) ( pixelsPerSquare/2)
+             ,Vertex2 (-pixelsPerSquare*e) ( pixelsPerSquare/2)
+             ]
+    where e = 0.5*(sqrt 2 - 1)
+
+renderSensor Sensor{xPos=x,yPos=y,active=a} = do
+    preservingMatrix $ do
+        translate (Vector3 x y 0)
+        scale 0.6 0.6 (1.0 :: GLdouble)
+        if a then color (Color3 1 0.7 0.0 :: Color3 GLdouble)
+             else color (Color3 0.1 0.1 0.1 :: Color3 GLdouble)
+        renderPrimitive Polygon $ mapM_ vertex diodeShape
 
 --reshape callback, takes care of the window in the event
 --  that its shape changes.

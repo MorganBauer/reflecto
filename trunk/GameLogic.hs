@@ -8,8 +8,8 @@
 module GameLogic where
 
 import Graphics.UI.GLUT (GLdouble,GLint)
-import Data.List (find)
-import Data.Maybe (isJust)
+import Data.List (find,partition)
+import Data.Maybe (fromJust,isJust)
 
 pixelsPerSquare :: (Num a) => a
 pixelsPerSquare = 50
@@ -54,7 +54,27 @@ data GObject = Player { xPos :: GLdouble
                       , reflected :: Bool
                       , moving :: Maybe Orientation
                       } |
+               Mirror  { xPos :: GLdouble
+                      , yPos :: GLdouble
+                      , orientation :: Orientation
+                      , reflected :: Bool
+                      } |
+               Beam { xPos :: GLdouble
+                    , yPos :: GLdouble
+                    , orientation :: Orientation
+                    , sightLength :: GLdouble
+                    , target :: Maybe GObject
+                    , source :: Source
+                    } |
                   --Stationary objects
+               Diode { xPos :: GLdouble
+                      , yPos :: GLdouble
+                      , orientation :: Orientation
+                      } |
+               Sensor { xPos :: GLdouble
+                      , yPos :: GLdouble
+                      , active :: Bool
+                      } |
                Wall { xPos :: GLdouble
                     , yPos :: GLdouble
                     } |
@@ -71,49 +91,15 @@ data GObject = Player { xPos :: GLdouble
                Plate { xPos :: GLdouble
                      , yPos :: GLdouble
                      , active :: Bool
-                     } |
-               Mirror  { xPos :: GLdouble
-                      , yPos :: GLdouble
-                      , orientation :: Orientation
-                      , reflected :: Bool
-                      } |
-               Beam { xPos :: GLdouble
-                    , yPos :: GLdouble
-                    , orientation :: Orientation
-                    , source :: Source
-                    }
+                     } 
             deriving (Eq,Read,Show)
 
 
 coords :: GObject -> (GLint, GLint)
-coords o = case o of
-    Player {xPos=x,yPos=y} -> freeToGrid (x,y)
-    Start {xPos=x,yPos=y} -> freeToGrid (x,y)
-    End {xPos=x,yPos=y} -> freeToGrid (x,y)
-    Block {xPos=x,yPos=y} -> freeToGrid (x,y)
-    Roller {xPos=x,yPos=y} -> freeToGrid (x,y)
-    Wall {xPos=x,yPos=y} -> freeToGrid (x,y)
-    Pit {xPos=x,yPos=y} -> freeToGrid (x,y)
-    Door {xPos=x,yPos=y} -> freeToGrid (x,y)
-    Plate {xPos=x,yPos=y} -> freeToGrid (x,y)
-    Mirror {xPos=x,yPos=y} -> freeToGrid (x,y)
-    Beam {xPos=x,yPos=y} -> freeToGrid (x,y)
-    otherwise -> error $ "No implementation for coords for GObject: " ++ show o
+coords o = freeToGrid (xPos o, yPos o)
 
 position :: GObject -> (GLdouble, GLdouble)
-position o = case o of
-    Player {xPos=x,yPos=y} -> (x,y)
-    Start {xPos=x,yPos=y} -> (x,y)
-    End {xPos=x,yPos=y} -> (x,y)
-    Block {xPos=x,yPos=y} -> (x,y)
-    Roller {xPos=x,yPos=y} -> (x,y)
-    Wall {xPos=x,yPos=y} -> (x,y)
-    Pit {xPos=x,yPos=y} -> (x,y)
-    Door {xPos=x,yPos=y} -> (x,y)
-    Plate {xPos=x,yPos=y} -> (x,y)
-    Mirror {xPos=x,yPos=y} -> (x,y)
-    Beam {xPos=x,yPos=y} -> (x,y)
-    otherwise -> error $ "No implementation for position for GObject: " ++ show o
+position o = (xPos o, yPos o)
 
 --this fixes the input files. Input files use coordinates to specify position
 reposition :: GObject -> GObject
@@ -134,20 +120,13 @@ movep ob = case ob of
     Plate{} -> False
     Mirror{} -> True
     Beam{} -> False
+    Diode{} -> False
+    Sensor{} -> False
 
 pushp :: GObject -> Bool
 pushp ob = case ob of
-    Player{} -> False
-    Start{} -> False
-    End{} -> False
-    Block{} -> False
     Roller{} -> True
-    Wall{} -> False
-    Pit{} -> False
-    Door{} -> False
-    Plate{} -> False
-    Mirror{} -> False
-    Beam{} -> False
+    _ -> False
 
 limitedVel :: GObject -> Maybe Orientation -> Maybe Orientation
 limitedVel ob (Just vel) = case ob of
@@ -186,14 +165,11 @@ move ob (x,y) or ref = let (x',y') = (gridToFree . freeToGrid) (x,y) in
     Block{} -> ob {xPos=x',yPos=y',orientation=or,reflected=ref}
     Roller{} -> ob {xPos=x',yPos=y',orientation=or,reflected=ref}
     Mirror{} -> ob {xPos=x',yPos=y',orientation=or,reflected=ref}
-    otherwise -> error $ "No implementation for move for GObject: " ++ show ob
+    _ -> error $ "No implementation for move for GObject: " ++ show ob
 
 obstructs :: [GObject] -> [GObject] -> Char -> Bool
 obstructs [] _ _ = False
 obstructs (ob:obs) k d = case ob of
-    Player{} -> obstructs obs k d
-    Start{} -> obstructs obs k d
-    End{} -> obstructs obs k d
     Block{} -> True
     Roller{orientation=o} -> any (not . coverable) k || 
                 d == 'x' && not (o == East || o == West) ||
@@ -202,9 +178,10 @@ obstructs (ob:obs) k d = case ob of
     Wall{} -> True
     Pit{} -> True
     Door{closed=c} -> c || obstructs obs k d
-    Plate{} -> obstructs obs k d
     Mirror{} -> True
-    Beam{} -> obstructs obs k d
+    Diode{} -> True
+    Sensor{} -> True
+    _ -> obstructs obs k d
 
 coverable o = case o of
     Player{} -> True
@@ -218,6 +195,8 @@ coverable o = case o of
     Plate{} -> True
     Mirror{} -> False
     Beam{} -> True
+    Diode{} -> False
+    Sensor{} -> False
 
 targetp :: GObject -> Bool
 targetp ob = case ob of
@@ -232,13 +211,15 @@ targetp ob = case ob of
     Plate{} -> False
     Mirror{} -> True
     Beam{} -> False
+    Diode{} -> True
+    Sensor{} -> True
 
 doorUpdate os = map (doorUpdate' os) os
 
 doorUpdate' os o = case o of
     Door {defaultClosed=dfs,triggers=ts} -> o{closed = checkTriggers os' dfs}
         where os' = concatMap (flip intersection os) ts --all objects that exist at the point of the trigger
-    otherwise -> o
+    _ -> o
 
 checkTriggers :: [GObject] -> Bool -> Bool
 checkTriggers os = if any isActive os then not else id
@@ -247,13 +228,15 @@ isActive o = if hasActivation o then active o else False
 
 hasActivation o = case o of
     Plate{} -> True
-    otherwise -> False
+    Sensor{} -> True
+    _ -> False
 
 activeUpdate p os = map (activeUpdate' (p:os)) os
 
 activeUpdate' os o = case o of
     Plate{} -> o{active = not $ null $ filter (/= o) $ intersection (coords o) os}
-    otherwise -> o
+    Sensor{} -> o{active = not $ null $ filter (/= o) $ intersection (coords o) os}
+    _ -> o
 
 edgeShape :: GObject -> (GLdouble, GLdouble) -> Orientation -> GLdouble 
 edgeShape ob (x,y) or = case ob of
@@ -272,7 +255,13 @@ edgeShape ob (x,y) or = case ob of
     Mirror{xPos=xc,yPos=yc} -> (if or `elem` [North,South,East,West]
                             then 1 else (sqrt 2)) *
                     (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
-    otherwise -> error $ "No implementation for edgeShape for GObject: " ++ show ob
+    Diode{xPos=xc,yPos=yc} -> (if or `elem` [North,South,East,West]
+                            then 1 else (sqrt 2)) *
+                    (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
+    Sensor{xPos=xc,yPos=yc} -> (if or `elem` [North,South,East,West]
+                            then 1 else (sqrt 2)) *
+                    (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
+    _ -> error $ "No implementation for edgeShape for GObject: " ++ show ob
 
 --a GObject's orientation
 data Orientation = North
@@ -349,10 +338,10 @@ gridToFree (x,y) = (fl x, fl y)
 -- used for beam termination and redirection
 viewCheckList :: GObject -> [(GLint,GLint)]
 viewCheckList obj = case o of
-    North -> [(x',j) | j <- [y'..h]]
-    South -> [(x',j) | j <- [y',(y'-1)..0]]
-    East  -> [(i,y') | i <- [x'..w]]
-    West  -> [(i,y') | i <- [x',(x'-1)..0]]
+    North -> [(x',j) | j <- [(y'+1)..h]]
+    South -> [(x',j) | j <- [(y'-1),(y'-2)..0]]
+    East  -> [(i,y') | i <- [(x'+1)..w]]
+    West  -> [(i,y') | i <- [(x'-1),(x'-2)..0]]
     Northeast -> if rx > ry
         then [(x'+i+j,y'+i) | i <- [0..min (h-y') (w-x')], j <- [0,1]]
         else [(x'+i,y'+i+j) | i <- [0..min (h-y') (w-x')], j <- [0,1]] 
@@ -376,9 +365,63 @@ viewCheckList obj = case o of
           h = snd m
           rx = rem (floor x) pixelsPerSquare --x relative to the current square
           ry = rem (floor y) pixelsPerSquare --y relative ...
+--special case: object is exactly centered
+viewCheckList' :: GObject -> [(GLint,GLint)]
+viewCheckList' obj = case o of
+    North -> [(x',j) | j <- [(y'+1)..h]]
+    South -> [(x',j) | j <- [(y'-1),(y'-2)..0]]
+    East  -> [(i,y') | i <- [(x'+1)..w]]
+    West  -> [(i,y') | i <- [(x'-1),(x'-2)..0]]
+    Northeast -> [(x'+i,y'+i) | i <- [1..min (h-y') (w-x')]]
+    Northwest -> [(x'-i,y'+i) | i <- [1..min (h-y') (x')]]
+    Southeast -> [(x'+i,y'-i) | i <- [1..min (y') (w-x')]]
+    Southwest -> [(x'-i,y'-i) | i <- [1..min (y') (x')]]
+    where (x,y) = position obj
+          (x',y') = coords obj
+          o = orientation obj
+          m = freeToGrid (mapWidth-1,mapHeight-1)
+          w = fst m --number of grid elements, width and height
+          h = snd m
 
 findTarget :: [GObject] -> [(GLint,GLint)] -> Maybe GObject
 findTarget os (i:is) = case find (\x -> targetp x && i == coords x) os of
             Just x -> Just x
             Nothing -> findTarget os is
 findTarget os [] = Nothing
+
+makeBeams [] = []
+makeBeams (o:os) = case o of
+    Diode{xPos=x,yPos=y,orientation=od} -> o : 
+            Beam{xPos=x,yPos=y,orientation=od, sightLength=1000
+                ,target=Nothing,source=LaserSource} : makeBeams os
+    _ -> o : makeBeams os
+
+beamExtend os = map (updateBeam os') bs' ++ os'
+    where (bs,os') = partition isBeam os
+          bs' = reflectedBeams bs os'
+
+isBeam o = case o of
+            Beam{} -> True
+            _      -> False
+
+updateBeam os b = case b of
+    Beam{xPos=x,yPos=y,orientation=o} -> b{target=t,sightLength=getSL}
+        where t = findTarget os (viewCheckList' b)
+              getSL = case t of
+                Nothing -> 1000
+                Just ob -> edgeShape ob (x,y) o
+    _ -> b
+
+reflectedBeams [] _ = []
+reflectedBeams (b:bs) os = case t of
+        Just Mirror{xPos=x,yPos=y,orientation=mo} -> 
+            if clockwise4 mo == cclockwise bo 
+            then b' : reflectedBeams (updateBeam os b'{xPos=x,yPos=y,orientation=(clockwise2 bo)} : bs) os
+            else if clockwise4 mo == clockwise bo
+            then b' : reflectedBeams (updateBeam os b'{xPos=x,yPos=y,orientation=(cclockwise2 bo)} : bs) os
+            else b' : reflectedBeams bs os
+        Just Sensor{xPos=x,yPos=y} -> b' : reflectedBeams (updateBeam os b'{xPos=x,yPos=y} : bs) os
+        _ -> b' : reflectedBeams bs os
+    where b' = updateBeam os b
+          t = target b'
+          bo = orientation b'
