@@ -75,6 +75,7 @@ renderHighGObject o = case o of
     Roller{} -> renderRoller o
     Wall{} -> renderWall o
     Door{} -> renderDoor o
+    Mirror{} -> renderMirror o
     _ -> return ()
 
 renderStart :: GObject -> IO ()
@@ -215,6 +216,41 @@ plateShape = [Vertex2 (-pixelsPerSquare/2) (-pixelsPerSquare/2)
              ,Vertex2 ( pixelsPerSquare/2) ( pixelsPerSquare/2)
              ,Vertex2 ( pixelsPerSquare/2) (-pixelsPerSquare/2)
              ]
+
+renderMirror Mirror{xPos=x,yPos=y,orientation=o,reflected=r} = do
+    preservingMatrix $ do
+        translate (Vector3 x y 0)
+        rotate (toAngle o) (Vector3 0 0 1)
+        rotate (toReflect r) (Vector3 0 1 0)
+        color (Color3 0 0 0 :: Color3 GLdouble)
+        renderPrimitive Polygon $ mapM_ vertex backShape
+        color (Color3 0.2 0.4 1.0 :: Color3 GLdouble)
+        lineWidth $= 4
+        renderPrimitive Lines $ mapM_ vertex faceShape
+        lineWidth $= 1
+    where backShape = if o `elem` [North,East,South,West] then mirrorBackSt else mirrorBackDi
+          faceShape = if o `elem` [North,East,South,West] then mirrorFaceSt else mirrorFaceDi
+
+mirrorBackSt :: [Vertex2 GLdouble]
+mirrorBackSt = [Vertex2 (-pixelsPerSquare/2) 0
+               ,Vertex2 ( pixelsPerSquare/2) 0
+               ,Vertex2 ( pixelsPerSquare/2) (-pixelsPerSquare/2)
+               ,Vertex2 (-pixelsPerSquare/2) (-pixelsPerSquare/2)
+               ]
+mirrorBackDi :: [Vertex2 GLdouble]
+mirrorBackDi = [Vertex2 (-pixelsPerSquare/sqrt 2) 0
+               ,Vertex2 ( pixelsPerSquare/sqrt 2) 0
+               ,Vertex2 0 (-pixelsPerSquare/sqrt 2)
+               ]
+mirrorFaceSt :: [Vertex2 GLdouble]
+mirrorFaceSt = [Vertex2 (-pixelsPerSquare/2) 0
+               ,Vertex2 ( pixelsPerSquare/2) 0
+               ]
+mirrorFaceDi :: [Vertex2 GLdouble]
+mirrorFaceDi = [Vertex2 (-pixelsPerSquare/sqrt 2) 0
+               ,Vertex2 ( pixelsPerSquare/sqrt 2) 0
+               ]
+
 
 --reshape callback, takes care of the window in the event
 --  that its shape changes.
