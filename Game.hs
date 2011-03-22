@@ -9,7 +9,7 @@
 module Main where
 
 import Graphics.UI.GLUT hiding (initState,position)
-import Control.Monad (liftM)
+import Control.Monad 
 import System.Directory
 import Data.Maybe (isJust,fromJust,isNothing)
 import Debug.Trace
@@ -48,6 +48,10 @@ timer gstate = do
     reflecto gstate
     pushing gstate
     objects gstate $~ map moveUpdate
+    objects gstate $~ filter (not . isBeam)
+    objects gstate $~ makeBeams
+    objects gstate $~ beamExtend
+    --mapM_ (\x -> if isBeam x then print x else return()) =<< (get $ objects gstate)
     objects gstate $~ activeUpdate p
     objects gstate $~ doorUpdate
     keyboard gstate $~ (\k@(Keyboard{space=s}) -> k{space'=s})
@@ -76,7 +80,8 @@ updatePlayer k os p = p{ xPos = x
         obstacley' = intersection (freeToGrid (xPos p, y'+pixelsPerSquare * signum (y'-yPos p))) os
         x = if or [x' > mapWidth,  x' < 0, obstructs obstaclex obstaclex' 'x'] then xPos p else x'
         y = if or [y' > mapHeight, y' < 0, obstructs obstacley obstacley' 'y'] then yPos p else y'
-        t = findTarget os (viewCheckList p{xPos=x,yPos=y,orientation=o})
+        t = findTarget os (f p{xPos=x,yPos=y,orientation=o})
+        f = if (x,y) == gridToFree (freeToGrid (x,y)) then viewCheckList' else viewCheckList
         getSL = case t of
             Just ob -> edgeShape ob (x,y) o
             Nothing -> 1000
@@ -154,9 +159,17 @@ updateLevel gstate = do
     if rKey k == Down
         then do l <- (get . level) gstate
                 let filename = "level" ++ show l
-                rawObjs <- readLevel filename
-                let objs = map reposition rawObjs
-                    start = head $ filter isStart objs
-                objects gstate $= objs
-                player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
+                b <- doesFileExist filename
+                if b then do
+                    rawObjs <- readLevel filename
+                    let objs = map reposition rawObjs
+                        start = head $ filter isStart objs
+                    objects gstate $= objs
+                    player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
+                  else do
+                    rawObjs <- readLevel "win"
+                    let objs = map reposition rawObjs
+                        start = head $ filter isStart objs
+                    objects gstate $= objs
+                    player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
         else return ()
