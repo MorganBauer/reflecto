@@ -18,6 +18,7 @@ Wall { xPos = 11, yPos = 10}
 Wall { xPos = 4 , yPos = 10}
 Wall { xPos = 4 , yPos = 9 }
 Wall { xPos = 4 , yPos = 8 }
+Wall { xPos = 4 , yPos = 4 }
 Pit { xPos = 5 , yPos = 10}
 Pit { xPos = 6 , yPos = 10}
 Pit { xPos = 7 , yPos = 10}
@@ -131,4 +132,3 @@ Wall { xPos = 11, yPos = 11}
 Wall { xPos = 12, yPos = 11}
 Wall { xPos = 13, yPos = 11}
 Wall { xPos = 14, yPos = 11}
-Wall { xPos = 4 , yPos = 4 }
