@@ -48,10 +48,10 @@ timer gstate = do
     reflecto gstate
     pushing gstate
     objects gstate $~ map moveUpdate
+    objects gstate $~ fillPits
     objects gstate $~ filter (not . isBeam)
     objects gstate $~ makeBeams
     objects gstate $~ beamExtend
-    --mapM_ (\x -> if isBeam x then print x else return()) =<< (get $ objects gstate)
     objects gstate $~ activeUpdate p
     objects gstate $~ doorUpdate
     keyboard gstate $~ (\k@(Keyboard{space=s}) -> k{space'=s})
@@ -124,8 +124,8 @@ pushing :: GameState -> IO ()
 pushing gstate = do
     p <- (get . player) gstate
     os <- (get . objects) gstate
-    let mob = intersection (coords p) os
-    if not $ and [not $ null mob, all pushp mob, isJust (velocity p)] then return ()
+    let mob = filter pushp $ intersection (coords p) os
+    if not $ and [not $ null mob, isJust (velocity p)] then return ()
       else do
         let os' = filter (not . (`elem` mob)) os
             setMoving o = o{moving = limitedVel o $ velocity p}

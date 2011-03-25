@@ -1,11 +1,11 @@
 Start { xPos = 8 , yPos = 1 , orientation = North }
-Door { xPos = 8 , yPos = 9 , orientation = South, defaultClosed = False, closed = False, triggers = [(8,8)]}
-Plate { xPos = 8, yPos = 8 , active = False}
+Door { xPos = 8 , yPos = 9 , orientation = South, defaultClosed = False, closed = False, triggers = [(8,8)], group = Orange}
+Plate { xPos = 8, yPos = 8 , active = False, groups = [Orange]}
 Mirror { xPos = 13, yPos = 5, orientation = Northeast, reflected = False }
 Mirror { xPos = 3 , yPos = 7, orientation = Southwest, reflected = False }
 Diode { xPos = 12, yPos = 3, orientation = North}
-Sensor { xPos = 3, yPos = 10, active = False}
-Door { xPos = 6 , yPos = 2 , orientation = West, defaultClosed = True, closed = True, triggers = [(3,10)]}
+Sensor { xPos = 3, yPos = 10, active = False, groups = [Green]}
+Door { xPos = 6 , yPos = 2 , orientation = West, defaultClosed = True, closed = True, triggers = [(3,10)], group = Green}
 Wall { xPos = 6 , yPos = 1 }
 Wall { xPos = 10, yPos = 1 }
 Wall { xPos = 11, yPos = 1 }
