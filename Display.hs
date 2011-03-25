@@ -188,15 +188,38 @@ pitShape =  [Vertex2 (-pixelsPerSquare/2) (-pixelsPerSquare/2)
             ,Vertex2 ( pixelsPerSquare/2) (-pixelsPerSquare/2)
             ]
 
-renderDoor Door{xPos=x,yPos=y,orientation=o,closed=c} = do
+renderDoor Door{xPos=x,yPos=y,orientation=o,closed=c,group=g} = do
     preservingMatrix $ do
         translate (Vector3 x y 0)
         rotate (toAngle o) (Vector3 0 0 1)
-        color (Color3 0.2 0.2 0.2 :: Color3 GLdouble)
+        color (Color3 0.8 0.8 0.8 :: Color3 GLdouble)
         lineWidth $= 4
         renderPrimitive Lines $ mapM_ vertex (if c then doorClosedShape else doorOpenShape)
-        lineWidth $= 1
+        renderBorder [g] 1
 renderDoor x = error $ "Attempted to render non-door as a door:\n" ++ show x
+
+renderBorder [] _ = do
+    lineWidth $= 1
+renderBorder (g:gs) borders = do
+    color $ groupColor g
+    lineWidth $= 2
+    renderPrimitive Lines $ mapM_ vertex $ borderShape (borders - length (g:gs)) borders
+    renderBorder gs borders
+
+borderShape :: Int -> Int -> [Vertex2 GLdouble]
+borderShape ix tot = [Vertex2 (-pixelsPerSquare/2+1) (-pixelsPerSquare/2+1+a)
+                     ,Vertex2 (-pixelsPerSquare/2+1) (-pixelsPerSquare/2+1+b)
+                     ,Vertex2 (-pixelsPerSquare/2+1+a) ( pixelsPerSquare/2-1)
+                     ,Vertex2 (-pixelsPerSquare/2+1+b) ( pixelsPerSquare/2-1)
+                     ,Vertex2 ( pixelsPerSquare/2-1) ( pixelsPerSquare/2-1-a)
+                     ,Vertex2 ( pixelsPerSquare/2-1) ( pixelsPerSquare/2-1-b)
+                     ,Vertex2 ( pixelsPerSquare/2-1-a) (-pixelsPerSquare/2+1)
+                     ,Vertex2 ( pixelsPerSquare/2-1-b) (-pixelsPerSquare/2+1)
+                     ]
+    where delta = (pixelsPerSquare - 2) / fromIntegral tot
+          x = fromIntegral ix
+          a = x*delta
+          b = a+delta
 
 doorClosedShape :: [Vertex2 GLdouble]
 doorClosedShape = [Vertex2 (-pixelsPerSquare/2) 0
@@ -210,13 +233,14 @@ doorOpenShape = [Vertex2 (-pixelsPerSquare/2) 0
                   ,Vertex2 ( pixelsPerSquare/2) 0
                   ]
 
-renderPlate Plate{xPos=x,yPos=y,active=a} = do
+renderPlate Plate{xPos=x,yPos=y,active=a,groups=gs} = do
     preservingMatrix $ do
         translate (Vector3 x y 0)
         if a 
           then color (Color3 0   0.6 0 :: Color3 GLdouble)
           else color (Color3 0.5 0.3 0 :: Color3 GLdouble)
         renderPrimitive Polygon $ mapM_ vertex plateShape
+        renderBorder gs (length gs)
 
 plateShape :: [Vertex2 GLdouble]
 plateShape = [Vertex2 (-pixelsPerSquare/2) (-pixelsPerSquare/2)
@@ -293,9 +317,10 @@ diodeShape = [Vertex2 (-pixelsPerSquare/2) ( pixelsPerSquare*e)
              ]
     where e = 0.5*(sqrt 2 - 1)
 
-renderSensor Sensor{xPos=x,yPos=y,active=a} = do
+renderSensor Sensor{xPos=x,yPos=y,active=a,groups=gs} = do
     preservingMatrix $ do
         translate (Vector3 x y 0)
+        renderBorder gs (length gs)
         scale 0.6 0.6 (1.0 :: GLdouble)
         if a then color (Color3 1 0.7 0.0 :: Color3 GLdouble)
              else color (Color3 0.1 0.1 0.1 :: Color3 GLdouble)

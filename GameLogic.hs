@@ -7,8 +7,8 @@
 
 module GameLogic where
 
-import Graphics.UI.GLUT (GLdouble,GLint)
-import Data.List (find,partition)
+import Graphics.UI.GLUT (GLdouble,GLint,Color3(..)) 
+import Data.List (find,partition,foldl')
 import Data.Maybe (fromJust,isJust)
 
 pixelsPerSquare :: (Num a) => a
@@ -25,6 +25,20 @@ vel = 3
 
 data Source = PlayerSource | LaserSource
     deriving (Eq,Show,Read)
+
+data Group = Red | Orange | Yellow | Green | Blue | Violet
+    deriving (Eq,Show,Read)
+
+--a GObject's orientation
+data Orientation = North
+                 | Northwest
+                 | West
+                 | Southwest
+                 | South
+                 | Southeast
+                 | East
+                 | Northeast
+             deriving (Eq,Read,Show)
 
 --GObject: Game Objects, Objects with various ways of interacting with the player.
 data GObject = Player { xPos :: GLdouble 
@@ -74,6 +88,7 @@ data GObject = Player { xPos :: GLdouble
                Sensor { xPos :: GLdouble
                       , yPos :: GLdouble
                       , active :: Bool
+                      , groups :: [Group]
                       } |
                Wall { xPos :: GLdouble
                     , yPos :: GLdouble
@@ -87,13 +102,22 @@ data GObject = Player { xPos :: GLdouble
                     , defaultClosed :: Bool
                     , closed :: Bool
                     , triggers :: [(GLint,GLint)]
+                    , group :: Group
                     } |
                Plate { xPos :: GLdouble
                      , yPos :: GLdouble
                      , active :: Bool
+                     , groups :: [Group]
                      } 
             deriving (Eq,Read,Show)
-
+groupColor :: Group -> Color3 GLdouble
+groupColor g = case g of
+    Red -> Color3 1 0 0
+    Orange -> Color3 1 0.5 0
+    Yellow -> Color3 1 1 0
+    Green -> Color3 0 1 0
+    Blue -> Color3 0 0 1
+    Violet -> Color3 0.4 0 0.4
 
 coords :: GObject -> (GLint, GLint)
 coords o = freeToGrid (xPos o, yPos o)
@@ -157,6 +181,16 @@ moveUpdate ob = if pushp ob && isJust (moving ob)
                             then moving ob else Nothing}
         in ob'
     else ob
+--this filters all the pits coinciding with rollers. Theoretically.
+--                  (a->b->a) a  [b] 
+fillPits obs = foldl' fillIn obs obs
+--             a    ->    b    ->   a
+fillIn :: [GObject] -> GObject -> [GObject]
+fillIn obs ob = if pushp ob && any isPit (intersection (coords ob) obs) then filter (\o -> not (o==ob) && not (isPit o && coords o == coords ob)) obs else obs
+
+isPit ob = case ob of
+    Pit{} -> True
+    _ -> False
 
 move :: GObject -> (GLdouble, GLdouble) -> Orientation -> Bool -> GObject 
 move ob (x,y) or ref = let (x',y') = (gridToFree . freeToGrid) (x,y) in
@@ -190,7 +224,7 @@ coverable o = case o of
     Block{} -> False
     Roller{} -> False
     Wall{} -> False
-    Pit{} -> False
+    Pit{} -> True
     Door{closed=c} -> not c
     Plate{} -> True
     Mirror{} -> False
@@ -263,16 +297,6 @@ edgeShape ob (x,y) or = case ob of
                     (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
     _ -> error $ "No implementation for edgeShape for GObject: " ++ show ob
 
---a GObject's orientation
-data Orientation = North
-                 | Northwest
-                 | West
-                 | Southwest
-                 | South
-                 | Southeast
-                 | East
-                 | Northeast
-             deriving (Eq,Read,Show)
 
 --clockwise/cclockwise alter an orientation by 45 degrees
 -- in the indicated direction
