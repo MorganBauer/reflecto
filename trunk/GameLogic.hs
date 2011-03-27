@@ -45,7 +45,7 @@ data GObject = Player { xPos :: GLdouble
                       , yPos :: GLdouble
                       , velocity :: Maybe Orientation
                       , sightLength :: GLdouble
-                      , target :: Maybe GObject
+                      , target :: [GObject]
                       , orientation :: Orientation 
                       , reflected :: Bool 
                       } |
@@ -62,8 +62,16 @@ data GObject = Player { xPos :: GLdouble
                      , orientation :: Orientation 
                      , reflected :: Bool 
                      } |
+               Rolls { xPos :: GLdouble
+                      , yPos :: GLdouble
+                      , orientation :: Orientation
+                      , reflected :: Bool
+                      , moving :: Maybe Orientation
+                      } |
                Roller { xPos :: GLdouble
                       , yPos :: GLdouble
+                      , xVis :: GLdouble
+                      , yVis :: GLdouble
                       , orientation :: Orientation
                       , reflected :: Bool
                       , moving :: Maybe Orientation
@@ -77,7 +85,7 @@ data GObject = Player { xPos :: GLdouble
                     , yPos :: GLdouble
                     , orientation :: Orientation
                     , sightLength :: GLdouble
-                    , target :: Maybe GObject
+                    , target :: [GObject]
                     , source :: Source
                     } |
                   --Stationary objects
@@ -101,7 +109,6 @@ data GObject = Player { xPos :: GLdouble
                     , orientation :: Orientation
                     , defaultClosed :: Bool
                     , closed :: Bool
-                    , triggers :: [(GLint,GLint)]
                     , group :: Group
                     } |
                Plate { xPos :: GLdouble
@@ -127,6 +134,8 @@ position o = (xPos o, yPos o)
 
 --this fixes the input files. Input files use coordinates to specify position
 reposition :: GObject -> GObject
+reposition Rolls{xPos=i,yPos=j,orientation=o,reflected=r,moving=m} = let (x,y) = gridToFree (round i, round j)
+    in Roller{xPos=x,xVis=x,yPos=y,yVis=y,orientation=o,reflected=r,moving=m}
 reposition ob = let (i,j) = position ob
                     (x,y) = gridToFree (round i, round j)
     in ob{xPos = x, yPos = y}
@@ -152,6 +161,10 @@ pushp ob = case ob of
     Roller{} -> True
     _ -> False
 
+visualPos ob = case ob of
+    Roller{xVis=x,yVis=y} -> (x,y)
+    x -> error $ "No separate visual coordinates for " ++ show x
+
 limitedVel :: GObject -> Maybe Orientation -> Maybe Orientation
 limitedVel ob (Just vel) = case ob of
     Roller{orientation=or} -> project vel or
@@ -164,24 +177,21 @@ project o1 o2 | o2 == o1 || clockwise o2 == o1 || cclockwise o2 == o1 = Just o2
 moveUpdate :: GObject -> GObject
 moveUpdate ob = if pushp ob && isJust (moving ob)
     then let vel' = vel*1.1
-             (x,y) = position ob 
+             (x,y) = visualPos ob 
              Just o = moving ob
              (x',y') = case o of
                         North -> (x,y+vel')
                         East -> (x+vel',y)
                         South -> (x,y-vel')
                         West -> (x-vel',y)
-                        Northeast -> (x+vel',y+vel')
-                        Southeast -> (x+vel',y-vel')
-                        Southwest -> (x-vel',y-vel')
-                        Northwest -> (x-vel',y+vel')
-             (i',j') = (gridToFree . freeToGrid) (x',y')
-             ob' = ob{ xPos = x', yPos = y'
+                        x -> error $ "Erroneous direction: " ++ show x ++ " for object " ++ show ob
+             (i',j') = position ob
+             ob' = ob{ xVis = x', yVis = y'
                      , moving = if vel <= abs (i'-x') || vel <= abs (j'-y')
                             then moving ob else Nothing}
         in ob'
     else ob
---this filters all the pits coinciding with rollers. Theoretically.
+--this filters all the pits coinciding with rollers.
 --                  (a->b->a) a  [b] 
 fillPits obs = foldl' fillIn obs obs
 --             a    ->    b    ->   a
@@ -197,7 +207,7 @@ move ob (x,y) or ref = let (x',y') = (gridToFree . freeToGrid) (x,y) in
   case ob of
     Player{} -> ob {xPos=x',yPos=y',orientation=or,reflected=ref}
     Block{} -> ob {xPos=x',yPos=y',orientation=or,reflected=ref}
-    Roller{} -> ob {xPos=x',yPos=y',orientation=or,reflected=ref}
+    Roller{} -> ob {xPos=x',xVis=x',yPos=y',yVis=y',orientation=or,reflected=ref,moving=Nothing}
     Mirror{} -> ob {xPos=x',yPos=y',orientation=or,reflected=ref}
     _ -> error $ "No implementation for move for GObject: " ++ show ob
 
@@ -251,14 +261,12 @@ targetp ob = case ob of
 doorUpdate os = map (doorUpdate' os) os
 
 doorUpdate' os o = case o of
-    Door {defaultClosed=dfs,triggers=ts} -> o{closed = checkTriggers os' dfs}
-        where os' = concatMap (flip intersection os) ts --all objects that exist at the point of the trigger
+    Door {defaultClosed=dfs,group=g} -> o{closed = checkTriggers os' dfs}
+        where os' = filter (\x -> hasActivation x && g `elem` groups x) os --all objects that are in the same group
     _ -> o
 
 checkTriggers :: [GObject] -> Bool -> Bool
-checkTriggers os = if any isActive os then not else id
-
-isActive o = if hasActivation o then active o else False
+checkTriggers os = if all active os then not else id
 
 hasActivation o = case o of
     Plate{} -> True
@@ -277,7 +285,7 @@ edgeShape ob (x,y) or = case ob of
     Block{xPos=xc,yPos=yc} -> (if or `elem` [North,South,East,West] 
                             then 1 else (sqrt 2)) *
                     (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
-    Roller{xPos=xc,yPos=yc} -> (if or `elem` [North,South,East,West] 
+    Roller{xVis=xc,yVis=yc} -> (if or `elem` [North,South,East,West] 
                             then 1 else (sqrt 2)) *
                     (max (abs $ x - xc) (abs $ y - yc) - pixelsPerSquare/2)
     Wall{xPos=xc,yPos=yc} -> (if or `elem` [North,South,East,West]
@@ -362,10 +370,10 @@ gridToFree (x,y) = (fl x, fl y)
 -- used for beam termination and redirection
 viewCheckList :: GObject -> [(GLint,GLint)]
 viewCheckList obj = case o of
-    North -> [(x',j) | j <- [(y'+1)..h]]
-    South -> [(x',j) | j <- [(y'-1),(y'-2)..0]]
-    East  -> [(i,y') | i <- [(x'+1)..w]]
-    West  -> [(i,y') | i <- [(x'-1),(x'-2)..0]]
+    North -> [(x',j) | j <- [(y')..h]]
+    South -> [(x',j) | j <- [(y'),(y'-1)..0]]
+    East  -> [(i,y') | i <- [(x')..w]]
+    West  -> [(i,y') | i <- [(x'),(x'-1)..0]]
     Northeast -> if rx > ry
         then [(x'+i+j,y'+i) | i <- [0..min (h-y') (w-x')], j <- [0,1]]
         else [(x'+i,y'+i+j) | i <- [0..min (h-y') (w-x')], j <- [0,1]] 
@@ -407,17 +415,17 @@ viewCheckList' obj = case o of
           w = fst m --number of grid elements, width and height
           h = snd m
 
-findTarget :: [GObject] -> [(GLint,GLint)] -> Maybe GObject
-findTarget os (i:is) = case find (\x -> targetp x && i == coords x) os of
-            Just x -> Just x
-            Nothing -> findTarget os is
-findTarget os [] = Nothing
+findTarget :: [GObject] -> [(GLint,GLint)] -> [GObject]
+findTarget os (i:is) = case filter (\x -> targetp x && i == coords x) os of
+            [] -> findTarget os is
+            ts -> ts
+findTarget os [] = []
 
 makeBeams [] = []
 makeBeams (o:os) = case o of
     Diode{xPos=x,yPos=y,orientation=od} -> o : 
             Beam{xPos=x,yPos=y,orientation=od, sightLength=1000
-                ,target=Nothing,source=LaserSource} : makeBeams os
+                ,target=[],source=LaserSource} : makeBeams os
     _ -> o : makeBeams os
 
 beamExtend os = map (updateBeam os') bs' ++ os'
@@ -429,22 +437,23 @@ isBeam o = case o of
             _      -> False
 
 updateBeam os b = case b of
-    Beam{xPos=x,yPos=y,orientation=o} -> b{target=t,sightLength=getSL}
-        where t = findTarget os (viewCheckList' b)
-              getSL = case t of
-                Nothing -> 1000
-                Just ob -> edgeShape ob (x,y) o
+    Beam{xPos=x,yPos=y,orientation=o} -> b{target=ts,sightLength=getSL}
+        where ts = findTarget os (viewCheckList' b)
+              getSL = case ts of
+                [] -> 1000
+                --FIXME: this is not necessarily correct...
+                (ob:obs) -> edgeShape ob (x,y) o
     _ -> b
 
 reflectedBeams [] _ = []
 reflectedBeams (b:bs) os = case t of
-        Just Mirror{xPos=x,yPos=y,orientation=mo} -> 
+        Mirror{xPos=x,yPos=y,orientation=mo}:_ -> 
             if clockwise4 mo == cclockwise bo 
             then b' : reflectedBeams (updateBeam os b'{xPos=x,yPos=y,orientation=(clockwise2 bo)} : bs) os
             else if clockwise4 mo == clockwise bo
             then b' : reflectedBeams (updateBeam os b'{xPos=x,yPos=y,orientation=(cclockwise2 bo)} : bs) os
             else b' : reflectedBeams bs os
-        Just Sensor{xPos=x,yPos=y} -> b' : reflectedBeams (updateBeam os b'{xPos=x,yPos=y} : bs) os
+        Sensor{xPos=x,yPos=y}:_ -> b' : reflectedBeams (updateBeam os b'{xPos=x,yPos=y} : bs) os
         _ -> b' : reflectedBeams bs os
     where b' = updateBeam os b
           t = target b'
