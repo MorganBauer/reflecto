@@ -190,7 +190,7 @@ moveUpdate ob = if pushp ob && isJust (moving ob)
                      , moving = if vel <= abs (i'-x') || vel <= abs (j'-y')
                             then moving ob else Nothing}
         in ob'
-    else ob
+    else if pushp ob then ob{xVis=xPos ob,yVis = yPos ob} else ob
 --this filters all the pits coinciding with rollers.
 --                  (a->b->a) a  [b] 
 fillPits obs = foldl' fillIn obs obs
