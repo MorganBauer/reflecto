@@ -48,6 +48,7 @@ timer gstate = do
     reflecto gstate
     pushing gstate
     objects gstate $~ map moveUpdate
+    --mapM_ (\x -> if pushp x then print x else return ()) =<< (get . objects) gstate
     objects gstate $~ fillPits
     objects gstate $~ filter (not . isBeam)
     objects gstate $~ makeBeams
@@ -83,8 +84,9 @@ updatePlayer k os p = p{ xPos = x
         t = findTarget os (f p{xPos=x,yPos=y,orientation=o})
         f = if (x,y) == gridToFree (freeToGrid (x,y)) then viewCheckList' else viewCheckList
         getSL = case t of
-            Just ob -> edgeShape ob (x,y) o
-            Nothing -> 1000
+            --FIXME: this is not necessarily correct...
+            (ob:obs) -> edgeShape ob (x,y) o
+            [] -> 1000
         o = if and [qKey k == Down, qKey' k == Up, eKey k == Up] then cclockwise (orientation p) else
             if and [qKey k == Up, eKey k == Down, eKey' k == Up] then clockwise (orientation p) else orientation p
         getVel = case (signum (x-xPos p), signum (y-yPos p)) of
@@ -103,9 +105,9 @@ reflecto gstate = do
     k <- (get . keyboard) gstate
     p <- (get . player) gstate
     os <- (get . objects) gstate
-    if not $ and [space k == Down, space' k == Up, isJust $ target p, movep $ fromJust $ target p] then return ()
+    if not $ and [space k == Down, space' k == Up, (not . null) $ target p, all movep $ target p] then return ()
       else do
-        let t = (fromJust . target) p --note: fromJust is safe because of isJust check above.
+        let t = (head . target) p --note: head is safe because of null check above.
             (px,py) = position t
             oo = orientation t
             r = reflected t
@@ -128,7 +130,16 @@ pushing gstate = do
     if not $ and [not $ null mob, isJust (velocity p)] then return ()
       else do
         let os' = filter (not . (`elem` mob)) os
-            setMoving o = o{moving = limitedVel o $ velocity p}
+            moveDir o = limitedVel o $ velocity p
+            x' o = xPos o + case moveDir o of
+                Just East -> pixelsPerSquare
+                Just West -> -pixelsPerSquare
+                _ -> 0
+            y' o = yPos o + case moveDir o of
+                Just North -> pixelsPerSquare
+                Just South -> -pixelsPerSquare
+                _ -> 0
+            setMoving o = o{xPos = x' o, yPos = y' o, moving = moveDir o}
             ob' = map setMoving mob
         objects gstate $= ob' ++ os'
 

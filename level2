@@ -1,7 +1,8 @@
 Start { xPos = 13, yPos = 1 , orientation = North }
 End { xPos = 2 , yPos = 10}
-Door { xPos = 2 , yPos = 8 , orientation = South, defaultClosed = True, closed = True, triggers = [(6,10)] , group = Red}
+Door { xPos = 2 , yPos = 8 , orientation = South, defaultClosed = True, closed = True, group = Red}
 Sensor { xPos = 6, yPos = 10, active = False, groups = [Red]}
+Sensor { xPos = 9, yPos = 4, active = False, groups = [Red]}
 Diode { xPos = 13, yPos = 10, orientation = South}
 Wall { xPos = 4 , yPos = 10}
 Wall { xPos = 4 , yPos = 9 }

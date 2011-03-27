@@ -56,7 +56,7 @@ initState = do
             , yPos = 0
             , velocity = Nothing
             , sightLength = 0
-            , target = Nothing
+            , target = []
             , orientation = North
             , reflected = False
             }

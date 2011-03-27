@@ -1,7 +1,8 @@
 Start { xPos = 13, yPos = 1 , orientation = North }
 End { xPos = 2 , yPos = 10}
-Door { xPos = 11, yPos = 9 , orientation = East, defaultClosed = True, closed = True, triggers = [(13,9)], group = Violet}
-Plate { xPos = 13, yPos = 9 , active = False , groups = [Violet]}
+Door { xPos = 11, yPos = 9 , orientation = East, defaultClosed = True, closed = True, group = Red}
+Plate { xPos = 13, yPos = 9 , active = False , groups = [Red]}
+Rolls { xPos = 13, yPos = 2, orientation = North, reflected = False, moving = Nothing}
 Block { xPos = 2 , yPos = 9 , orientation = North , reflected = False }
 Block { xPos = 2 , yPos = 2 , orientation = North , reflected = False }
 Block { xPos = 9 , yPos = 2 , orientation = North , reflected = False }

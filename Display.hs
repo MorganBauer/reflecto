@@ -142,7 +142,7 @@ blockEdge = [Vertex2 (-pixelsPerSquare/3) (pixelsPerSquare/3)
             ]
 
 renderRoller :: GObject -> IO ()
-renderRoller Roller {xPos=x, yPos=y, orientation=o, reflected=r} = do
+renderRoller Roller {xVis=x, yVis=y, orientation=o, reflected=r} = do
     preservingMatrix $ do
         translate (Vector3 x y 0)
         rotate (toAngle o) (Vector3 0 0 1)
