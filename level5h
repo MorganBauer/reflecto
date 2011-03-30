@@ -1,0 +1,8 @@
+[(Vertex2 50 550, "Laser sensors can also control doors")
+,(Vertex2 50 450, "Remove the obstacles to let the laser")
+,(Vertex2 50 430, "shine through the sensors")
+,(Vertex2 50 350, "Lasers reflect off of mirrors,")
+,(Vertex2 50 330, "such as the one in the top left")
+,(Vertex2 50 250, "Don't forget to press R")
+,(Vertex2 50 230, "if you get stuck!")
+]

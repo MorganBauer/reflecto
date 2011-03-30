@@ -1,0 +1,7 @@
+[(Vertex2 50 550, "You are a green triangle")
+,(Vertex2 50 450, " W")
+,(Vertex2 50 430, "ASD to move")
+,(Vertex2 50 280, "Goal: Reach the blue marker")
+,(Vertex2 50 140, "Use spacebar to switch")
+,(Vertex2 50 120, "with obstacles")
+]

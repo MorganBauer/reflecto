@@ -9,7 +9,9 @@
 module GameState where
 
 import Graphics.UI.GLUT
+import System.Directory
 import Data.IORef
+
 import GameLogic
 
 --GameState: the collection of all states of the game
@@ -18,6 +20,7 @@ data GameState = GameState { player :: IORef GObject
                            , objects :: IORef [GObject]
                            , keyboard :: IORef Keyboard
                            , level :: IORef Integer
+                           , levelh :: IORef [(Vertex2 GLint,String)]
                            }
 
 
@@ -62,6 +65,7 @@ initState = do
             }
         l = 1
     rawObjs <- readLevel "level1"
+    h <- readHelp "level1h"
     let objs = map reposition rawObjs
         start = head $ filter isStart objs
     ks <- newIORef k
@@ -71,13 +75,22 @@ initState = do
                     }
     os <- newIORef objs
     lvl <- newIORef l
+    helps <- newIORef h
     return $ GameState
             { player = ps
             , objects = os
             , keyboard = ks
             , level = lvl
+            , levelh = helps
             }
 
+readHelp :: String -> IO ([(Vertex2 GLint,String)])
+readHelp file = do
+    b <- doesFileExist file
+    if b then do
+        str <- readFile file
+        return (read str)
+      else return []
 
 readLevel :: String -> IO ([GObject])
 readLevel file = do

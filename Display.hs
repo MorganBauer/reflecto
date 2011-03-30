@@ -23,7 +23,43 @@ display gstate = do
     mapM_ renderMedGObject =<< (get . objects) gstate
     mapM_ renderHighGObject =<< (get . objects) gstate
     renderPlayer =<< (get . player) gstate
+    drawHelp =<< (get . levelh) gstate
+    --drawHelp =<< (get . level) gstate
     swapBuffers
+
+drawHelp :: [(Vertex2 GLint, String)] -> IO ()
+drawHelp [] = return ()
+drawHelp hs = do
+    color (Color3 0 0 0 :: Color3 GLdouble)
+    renderPrimitive Polygon $ mapM_ vertex vsScreenRectangle
+    color (Color3 1 1 1 :: Color3 GLdouble)
+    drawHelp' hs
+
+drawHelp' [] = return ()
+drawHelp' ((v,s):hs) = do
+    rasterPos' v
+    renderString' s
+    drawHelp' hs
+
+renderString' = renderString Fixed9By15
+rasterPos' = rasterPos :: Vertex2 GLint -> IO ()
+
+helpLevel3 :: IO ()
+helpLevel3 = do
+    color (Color3 0 0 0 :: Color3 GLdouble)
+    renderPrimitive Polygon $ mapM_ vertex vsScreenRectangle
+    color (Color3 1 1 1 :: Color3 GLdouble)
+    rasterPos' (Vertex2  50 450)
+    renderString' "Push rollers to fill gaps"
+    rasterPos' (Vertex2  50 250)
+    renderString' "If you get stuck, press R"
+
+vsScreenRectangle :: [Vertex2 GLdouble]
+vsScreenRectangle = [Vertex2 0 0
+                    ,Vertex2 (mapWidth/2) 0
+                    ,Vertex2 (mapWidth/2) mapHeight
+                    ,Vertex2 0 mapHeight
+                    ]
 
 drawGrid :: IO ()
 drawGrid = do
