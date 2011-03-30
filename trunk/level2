@@ -1,48 +1,30 @@
-Start { xPos = 13, yPos = 1 , orientation = North }
-End { xPos = 2 , yPos = 10}
-Door { xPos = 2 , yPos = 8 , orientation = South, defaultClosed = True, closed = True, group = Red}
-Sensor { xPos = 6, yPos = 10, active = False, groups = [Red]}
-Sensor { xPos = 9, yPos = 4, active = False, groups = [Red]}
-Diode { xPos = 13, yPos = 10, orientation = South}
-Wall { xPos = 4 , yPos = 10}
-Wall { xPos = 4 , yPos = 9 }
-Wall { xPos = 4 , yPos = 8 }
-Wall { xPos = 3 , yPos = 8 }
-Wall { xPos = 1 , yPos = 8 }
+Start { xPos = 13, yPos =  9, orientation = West }
+Wall { xPos = 9 , yPos = 7 }
+Block { xPos = 10, yPos = 7 , orientation = North , reflected = False }
+Block { xPos = 13, yPos = 2 , orientation = North , reflected = False }
+Wall { xPos = 11, yPos = 7 }
+Wall { xPos = 12, yPos = 7 }
+Wall { xPos = 13, yPos = 7 }
+Wall { xPos = 14, yPos = 7 }
+Pit { xPos = 9 , yPos = 4 }
+Pit { xPos = 10, yPos = 4 }
+Pit { xPos = 11, yPos = 4 }
+Pit { xPos = 12, yPos = 4 }
+Pit { xPos = 13, yPos = 4 }
+Pit { xPos = 14, yPos = 4 }
+End { xPos = 10 , yPos = 2 }
+Wall { xPos = 8 , yPos = 0 }
+Wall { xPos = 8 , yPos = 1 }
+Wall { xPos = 8 , yPos = 2 }
+Wall { xPos = 8 , yPos = 3 }
+Wall { xPos = 8 , yPos = 4 }
+Wall { xPos = 8 , yPos = 5 }
+Wall { xPos = 8 , yPos = 6 }
+Wall { xPos = 8 , yPos = 7 }
 Wall { xPos = 8 , yPos = 8 }
 Wall { xPos = 8 , yPos = 9 }
 Wall { xPos = 8 , yPos = 10}
-Wall { xPos = 9 , yPos = 8 }
-Wall { xPos = 9 , yPos = 9 }
-Wall { xPos = 9 , yPos = 10}
-Wall { xPos = 10, yPos = 8 }
-Wall { xPos = 10, yPos = 9 }
-Wall { xPos = 10, yPos = 10}
-Wall { xPos = 11, yPos = 8 }
-Wall { xPos = 11, yPos = 9 }
-Wall { xPos = 11, yPos = 10}
-Mirror { xPos = 13, yPos = 5, orientation = Northeast, reflected = False }
-Mirror { xPos = 3 , yPos = 7, orientation = Southwest, reflected = False }
-Wall { xPos = 0 , yPos = 0 }
-Wall { xPos = 0 , yPos = 1 }
-Wall { xPos = 0 , yPos = 2 }
-Wall { xPos = 0 , yPos = 3 }
-Wall { xPos = 0 , yPos = 4 }
-Wall { xPos = 0 , yPos = 5 }
-Wall { xPos = 0 , yPos = 6 }
-Wall { xPos = 0 , yPos = 7 }
-Wall { xPos = 0 , yPos = 8 }
-Wall { xPos = 0 , yPos = 9 }
-Wall { xPos = 0 , yPos = 10}
-Wall { xPos = 0 , yPos = 11}
-Wall { xPos = 1 , yPos = 0 }
-Wall { xPos = 2 , yPos = 0 }
-Wall { xPos = 3 , yPos = 0 }
-Wall { xPos = 4 , yPos = 0 }
-Wall { xPos = 5 , yPos = 0 }
-Wall { xPos = 6 , yPos = 0 }
-Wall { xPos = 7 , yPos = 0 }
-Wall { xPos = 8 , yPos = 0 }
+Wall { xPos = 8 , yPos = 11}
 Wall { xPos = 9 , yPos = 0 }
 Wall { xPos = 10, yPos = 0 }
 Wall { xPos = 11, yPos = 0 }
@@ -61,14 +43,6 @@ Wall { xPos = 15, yPos = 8 }
 Wall { xPos = 15, yPos = 9 }
 Wall { xPos = 15, yPos = 10}
 Wall { xPos = 15, yPos = 11}
-Wall { xPos = 1 , yPos = 11}
-Wall { xPos = 2 , yPos = 11}
-Wall { xPos = 3 , yPos = 11}
-Wall { xPos = 4 , yPos = 11}
-Wall { xPos = 5 , yPos = 11}
-Wall { xPos = 6 , yPos = 11}
-Wall { xPos = 7 , yPos = 11}
-Wall { xPos = 8 , yPos = 11}
 Wall { xPos = 9 , yPos = 11}
 Wall { xPos = 10, yPos = 11}
 Wall { xPos = 11, yPos = 11}

@@ -166,6 +166,9 @@ updateLevel gstate = do
                         start = head $ filter isStart objs
                     objects gstate $= objs
                     player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
+                let helpname = "level" ++ show l ++ "h"
+                help <- readHelp helpname
+                levelh gstate $= help
         else return ()
     if rKey k == Down
         then do l <- (get . level) gstate
@@ -183,4 +186,7 @@ updateLevel gstate = do
                         start = head $ filter isStart objs
                     objects gstate $= objs
                     player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
+                let helpname = "level" ++ show l ++ "h"
+                help <- readHelp helpname
+                levelh gstate $= help
         else return ()

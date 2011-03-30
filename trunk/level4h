@@ -1,0 +1,7 @@
+[(Vertex2 50 450, "Pressure plates control doors")
+,(Vertex2 50 350, "Place a block on the plate")
+,(Vertex2 50 330, "to open the door")
+,(Vertex2 50 250, "Doors and their controllers")
+,(Vertex2 50 230, "are color coded. Red controls red,")
+,(Vertex2 50 210, "green controls green, etc")
+]
