@@ -357,10 +357,11 @@ renderSensor Sensor{xPos=x,yPos=y,active=a,groups=gs} = do
     preservingMatrix $ do
         translate (Vector3 x y 0)
         renderBorder gs (length gs)
+        rotate (toAngle Northwest) (Vector3 0 0 1)
         scale 0.6 0.6 (1.0 :: GLdouble)
         if a then color (Color3 1 0.7 0.0 :: Color3 GLdouble)
-             else color (Color3 0.1 0.1 0.1 :: Color3 GLdouble)
-        renderPrimitive Polygon $ mapM_ vertex diodeShape
+             else color (Color3 0 1 1 :: Color3 GLdouble)
+        renderPrimitive Polygon $ mapM_ vertex blockShape
 
 --reshape callback, takes care of the window in the event
 --  that its shape changes.
