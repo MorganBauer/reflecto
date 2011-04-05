@@ -1,10 +1,9 @@
 Start { xPos = 10, yPos =  9, orientation = East }
-Door { xPos = 13, yPos = 5 , orientation = South, defaultClosed = True, closed = True, group = Orange}
-Sensor { xPos = 11, yPos = 10, active = False, groups = [Orange]}
-Block { xPos = 9 , yPos = 8 , orientation = North , reflected = False }
-Sensor { xPos = 9, yPos = 7, active = False, groups = [Orange]}
-Diode { xPos = 14, yPos = 10, orientation = West}
-Mirror { xPos = 9 , yPos = 10, orientation = Southeast, reflected = False }
+Door { xPos = 13, yPos = 5 , orientation = South, defaultClosed = True, closed = True, group = Green}
+Sensor { xPos = 11, yPos = 10, active = False, groups = [Green]}
+Sensor { xPos = 14, yPos = 8 , active = False, groups = [Green]}
+Diode { xPos = 9 , yPos = 10, orientation = East}
+Mirror { xPos = 10, yPos = 6 , orientation = Northeast, reflected = False }
 Wall { xPos = 9 , yPos = 5 }
 Wall { xPos = 10, yPos = 5 }
 Wall { xPos = 11, yPos = 5 }

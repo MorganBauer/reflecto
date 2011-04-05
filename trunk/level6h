@@ -1,0 +1,7 @@
+[(Vertex2 50 550, "Move to the top right corner and")
+,(Vertex2 50 530, "reflect with the mirror diagonally")
+,(Vertex2 50 450, "Note that both you and the mirror")
+,(Vertex2 50 430, "are facing in opposite direcitons")
+,(Vertex2 50 350, "Using this, you can reorient objects")
+,(Vertex2 50 330, "to solve puzzles such as this one")
+]

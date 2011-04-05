@@ -1,0 +1,12 @@
+[(Vertex2 50 550, "Sometimes mirrors need to be moved")
+,(Vertex2 50 530, "multiple times to solve a puzzzle")
+,(Vertex2 50 450, "Reflect with the mirror on the right")
+,(Vertex2 50 430, "until it sends the beam to the left")
+,(Vertex2 50 410, "across the top of the map")
+,(Vertex2 50 310, "Puzzles like this will continue to get")
+,(Vertex2 50 290, "increasingly difficult")
+,(Vertex2 25 150, "Solution: Reflect the mirror once from")
+,(Vertex2 25 130, "above so that it is at the top of the map")
+,(Vertex2 25 110, "and then reflect it once more")
+,(Vertex2 25  90, "to the right to finish the puzzle")
+]
