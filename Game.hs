@@ -8,11 +8,11 @@
 
 module Main where
 
-import Graphics.UI.GLUT hiding (initState,position)
+import Graphics.UI.GLUT hiding (initState,position,Menu)
 import Control.Monad 
 import System.Directory
 import Data.Maybe (isJust,fromJust,isNothing)
-import Debug.Trace
+import System.Exit
 
 import GameState
 import Display
@@ -41,26 +41,64 @@ stepTime = 16
 
 timer :: GameState -> TimerCallback
 timer gstate = do
+    phz <- (get . phase) gstate
     k <- (get . keyboard) gstate
     p <- (get . player) gstate
     os <- (get . objects) gstate
-    player gstate $~ (updatePlayer k os)
-    reflecto gstate
-    pushing gstate
-    objects gstate $~ map moveUpdate
-    --mapM_ (\x -> if pushp x then print x else return ()) =<< (get . objects) gstate
-    objects gstate $~ fillPits
-    objects gstate $~ filter (not . isBeam)
-    objects gstate $~ makeBeams
-    objects gstate $~ beamExtend
-    objects gstate $~ activeUpdate p
-    objects gstate $~ doorUpdate
-    keyboard gstate $~ (\k@(Keyboard{space=s}) -> k{space'=s})
-    keyboard gstate $~ (\k@(Keyboard{qKey=q}) -> k{qKey'=q})
-    keyboard gstate $~ (\k@(Keyboard{eKey=e}) -> k{eKey'=e})
-    updateLevel gstate
-    postRedisplay Nothing
-    addTimerCallback stepTime $ timer gstate
+    case phz of
+        Play -> do
+            player gstate $~ (updatePlayer k os)
+            reflecto gstate
+            pushing gstate
+            objects gstate $~ map moveUpdate
+            objects gstate $~ fillPits
+            objects gstate $~ filter (not . isBeam)
+            objects gstate $~ makeBeams
+            objects gstate $~ beamExtend
+            objects gstate $~ activeUpdate p
+            objects gstate $~ doorUpdate
+            keyboard gstate $~ (\k@(Keyboard{space=s}) -> k{space'=s})
+            keyboard gstate $~ (\k@(Keyboard{qKey=q}) -> k{qKey'=q})
+            keyboard gstate $~ (\k@(Keyboard{eKey=e}) -> k{eKey'=e})
+            keyboard gstate $~ (\k@(Keyboard{wKey=w}) -> k{wKey'=w})
+            keyboard gstate $~ (\k@(Keyboard{sKey=s}) -> k{sKey'=s})
+            updateLevel gstate
+            postRedisplay Nothing
+            if esc k == Down then phase gstate $= Menu else return ()
+            addTimerCallback stepTime $ timer gstate
+        Title -> do
+            if space k == Down && space' k == Up then phase gstate $= Play else return ()
+            keyboard gstate $~ (\k@(Keyboard{space=s}) -> k{space'=s})
+            postRedisplay Nothing
+            addTimerCallback stepTime $ timer gstate
+        Menu -> do
+            if wKey k == Down && wKey' k == Up then cursorPos gstate $~ (\x -> if x < 2 then 1 else x-1) else return () 
+            if sKey k == Down && sKey' k == Up then cursorPos gstate $~ (\x -> if x > 2 then 3 else x+1) else return () 
+            if space k == Down then do
+                cpos <- get $ cursorPos gstate
+                case cpos of
+                    1 -> phase gstate $= Play
+                    2 -> do
+                        phase gstate $= Play
+                        level gstate $= 1
+                        cursorPos gstate $= 1
+                        rawObjs <- readLevel "level1"
+                        let objs = map reposition rawObjs
+                            start = head $ filter isStart objs
+                        objects gstate $= objs
+                        player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
+                    3 -> exitWith ExitSuccess
+                    _ -> return ()
+              else return ()
+            keyboard gstate $~ (\k@(Keyboard{wKey=w}) -> k{wKey'=w})
+            keyboard gstate $~ (\k@(Keyboard{sKey=s}) -> k{sKey'=s})
+            postRedisplay Nothing
+            addTimerCallback stepTime $ timer gstate
+        Win -> do
+            if space k == Down then phase gstate $= Title else return ()
+            keyboard gstate $~ (\k@(Keyboard{space=s}) -> k{space'=s})
+            postRedisplay Nothing
+            addTimerCallback stepTime $ timer gstate
 
 updatePlayer :: Keyboard -> [GObject] -> GObject -> GObject
 updatePlayer k os p = p{ xPos = x
@@ -161,11 +199,8 @@ updateLevel gstate = do
                     objects gstate $= objs
                     player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
                   else do
-                    rawObjs <- readLevel "win"
-                    let objs = map reposition rawObjs
-                        start = head $ filter isStart objs
-                    objects gstate $= objs
-                    player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
+                    phase gstate $= Win
+                    level gstate $= 0
                 let helpname = "level" ++ show l ++ "h"
                 help <- readHelp helpname
                 levelh gstate $= help
@@ -181,11 +216,8 @@ updateLevel gstate = do
                     objects gstate $= objs
                     player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
                   else do
-                    rawObjs <- readLevel "win"
-                    let objs = map reposition rawObjs
-                        start = head $ filter isStart objs
-                    objects gstate $= objs
-                    player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
+                      phase gstate $= Win
+                      level gstate $= 1
                 let helpname = "level" ++ show l ++ "h"
                 help <- readHelp helpname
                 levelh gstate $= help
