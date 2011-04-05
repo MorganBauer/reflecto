@@ -9,7 +9,6 @@ module Keyboard where
 
 import Data.IORef
 import Graphics.UI.GLUT
-import System.Exit
 
 import GameState
 
@@ -23,7 +22,7 @@ keyboardMouse kstate (Char c) pos _ _ = case c of
     'e'   -> kstate $~ (\k -> k{eKey=pos})
     'r'   -> kstate $~ (\k -> k{rKey=pos})
     ' '   -> kstate $~ (\k -> k{space=pos})
-    '\27' -> exitWith ExitSuccess
+    '\27' -> kstate $~ (\k -> k{esc=pos})
     _     -> return ()
 
 keyboardMouse _ _ _ _ _ = return ()

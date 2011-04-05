@@ -29,6 +29,9 @@ data Source = PlayerSource | LaserSource
 data Group = Red | Orange | Yellow | Green | Blue | Violet
     deriving (Eq,Show,Read)
 
+data GamePhase = Play | Menu | Title | Win
+    deriving (Eq,Show,Read)
+
 --a GObject's orientation
 data Orientation = North
                  | Northwest

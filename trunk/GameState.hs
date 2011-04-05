@@ -21,12 +21,16 @@ data GameState = GameState { player :: IORef GObject
                            , keyboard :: IORef Keyboard
                            , level :: IORef Integer
                            , levelh :: IORef [(Vertex2 GLint,String)]
+                           , phase :: IORef GamePhase
+                           , cursorPos :: IORef Integer
                            }
 
 
 --Keyboard: indicates which keys are pressed and which are not.
 data Keyboard = Keyboard { wKey
+                         , wKey'
                          , sKey
+                         , sKey'
                          , aKey
                          , dKey
                          , qKey
@@ -35,7 +39,8 @@ data Keyboard = Keyboard { wKey
                          , eKey'
                          , rKey
                          , space
-                         , space' :: KeyState
+                         , space'
+                         , esc :: KeyState
                          }
 
 --creates a new GameState structure with predetermined initial values
@@ -43,7 +48,9 @@ initState :: IO GameState
 initState = do
     let k = Keyboard 
             { wKey   = Up
+            , wKey'  = Up
             , sKey   = Up
+            , sKey'  = Up
             , aKey   = Up
             , dKey   = Up
             , qKey   = Up
@@ -53,6 +60,7 @@ initState = do
             , rKey   = Up
             , space  = Up
             , space' = Up
+            , esc    = Up
             }
         p = Player
             { xPos = 0
@@ -76,12 +84,16 @@ initState = do
     os <- newIORef objs
     lvl <- newIORef l
     helps <- newIORef h
+    phz <- newIORef Title
+    crs <- newIORef 1
     return $ GameState
             { player = ps
             , objects = os
             , keyboard = ks
             , level = lvl
             , levelh = helps
+            , phase = phz
+            , cursorPos = crs
             }
 
 readHelp :: String -> IO ([(Vertex2 GLint,String)])

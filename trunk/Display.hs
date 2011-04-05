@@ -8,7 +8,7 @@
 
 module Display where
 
-import Graphics.UI.GLUT
+import Graphics.UI.GLUT hiding (Menu)
 
 import GameState
 import GameLogic
@@ -17,6 +17,53 @@ import GameLogic
 display :: GameState -> DisplayCallback
 display gstate = do
     clear [ColorBuffer]
+    phz <- get (phase gstate)
+    case phz of
+        Title -> displayTitle gstate
+        Play -> displayPlay   gstate
+        Menu -> displayMenu   gstate
+        Win -> displayWin     gstate
+
+displayTitle gstate = do
+    color (Color3 0 0.1 0.4 :: Color3 GLdouble)
+    renderPrimitive Polygon $ mapM_ vertex fullScreenRectangle
+    color (Color3 1 1 1 :: Color3 GLdouble)
+    rasterPos' (Vertex2 360 300)
+    renderString Helvetica18 "Reflecto"
+    swapBuffers
+
+displayMenu gstate = do
+    curs <- get $ cursorPos gstate
+    let curs' = bound curs
+    color (Color3 0 0.1 0.4 :: Color3 GLdouble)
+    renderPrimitive Polygon $ mapM_ vertex fullScreenRectangle
+    color (Color3 0 0.3 0.6 :: Color3 GLdouble)
+    renderPrimitive Polygon $ mapM_ vertex [(Vertex2 280 (430 - 50*fromIntegral curs') :: Vertex2 GLint)
+                                           ,(Vertex2 280 (480 - 50*fromIntegral curs'))
+                                           ,(Vertex2 480 (480 - 50*fromIntegral curs'))
+                                           ,(Vertex2 480 (430 - 50*fromIntegral curs'))
+                                           ]
+    color (Color3 1 1 1 :: Color3 GLdouble)
+    rasterPos' (Vertex2 360 500)
+    renderString Helvetica18 "MENU"
+    rasterPos' (Vertex2 300 400)
+    renderString' "Resume"
+    rasterPos' (Vertex2 300 350)
+    renderString' "New Game"
+    rasterPos' (Vertex2 300 300)
+    renderString' "Quit"
+    swapBuffers
+  where bound a = if a < 1 then 1 else if a > 3 then 3 else a
+
+displayWin gstate = do
+    color (Color3 0 0.1 0.4 :: Color3 GLdouble)
+    renderPrimitive Polygon $ mapM_ vertex fullScreenRectangle
+    color (Color3 1 1 1 :: Color3 GLdouble)
+    rasterPos' (Vertex2 360 300)
+    renderString Helvetica18 "Victory"
+    swapBuffers
+
+displayPlay gstate = do
     polygonMode $= (Fill,Fill)
     drawGrid
     mapM_ renderLowGObject =<< (get . objects) gstate
@@ -24,7 +71,6 @@ display gstate = do
     mapM_ renderHighGObject =<< (get . objects) gstate
     renderPlayer =<< (get . player) gstate
     drawHelp =<< (get . levelh) gstate
-    --drawHelp =<< (get . level) gstate
     swapBuffers
 
 drawHelp :: [(Vertex2 GLint, String)] -> IO ()
@@ -44,20 +90,16 @@ drawHelp' ((v,s):hs) = do
 renderString' = renderString Fixed9By15
 rasterPos' = rasterPos :: Vertex2 GLint -> IO ()
 
-helpLevel3 :: IO ()
-helpLevel3 = do
-    color (Color3 0 0 0 :: Color3 GLdouble)
-    renderPrimitive Polygon $ mapM_ vertex vsScreenRectangle
-    color (Color3 1 1 1 :: Color3 GLdouble)
-    rasterPos' (Vertex2  50 450)
-    renderString' "Push rollers to fill gaps"
-    rasterPos' (Vertex2  50 250)
-    renderString' "If you get stuck, press R"
-
 vsScreenRectangle :: [Vertex2 GLdouble]
 vsScreenRectangle = [Vertex2 0 0
                     ,Vertex2 (mapWidth/2) 0
                     ,Vertex2 (mapWidth/2) mapHeight
+                    ,Vertex2 0 mapHeight
+                    ]
+fullScreenRectangle :: [Vertex2 GLdouble]
+fullScreenRectangle = [Vertex2 0 0
+                    ,Vertex2 mapWidth 0
+                    ,Vertex2 mapWidth mapHeight
                     ,Vertex2 0 mapHeight
                     ]
 
