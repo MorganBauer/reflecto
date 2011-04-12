@@ -77,15 +77,19 @@ timer gstate = do
             if space k == Down then do
                 cpos <- get $ cursorPos gstate
                 case cpos of
-                    1 -> phase gstate $= Play
+                    1 -> do 
+                        phase gstate $= Play
+                        keyboard gstate $~ (\k -> k{space=Up,space'=Up})
                     2 -> do
                         phase gstate $= Play
                         level gstate $= 1
                         cursorPos gstate $= 1
                         rawObjs <- readLevel "level1"
+                        h <- readHelp "level1h"
                         let objs = map reposition rawObjs
                             start = head $ filter isStart objs
                         objects gstate $= objs
+                        levelh gstate $= h
                         player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
                     3 -> exitWith ExitSuccess
                     _ -> return ()
@@ -198,12 +202,19 @@ updateLevel gstate = do
                         start = head $ filter isStart objs
                     objects gstate $= objs
                     player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
+                    let helpname = "level" ++ show l ++ "h"
+                    help <- readHelp helpname
+                    levelh gstate $= help
                   else do
                     phase gstate $= Win
-                    level gstate $= 0
-                let helpname = "level" ++ show l ++ "h"
-                help <- readHelp helpname
-                levelh gstate $= help
+                    level gstate $= 1
+                    rawObjs <- readLevel "level1"
+                    let objs = map reposition rawObjs
+                        start = head $ filter isStart objs
+                    objects gstate $= objs
+                    player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
+                    help <- readHelp "level1h"
+                    levelh gstate $= help
         else return ()
     if rKey k == Down
         then do l <- (get . level) gstate

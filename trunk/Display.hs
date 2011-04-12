@@ -30,6 +30,8 @@ displayTitle gstate = do
     color (Color3 1 1 1 :: Color3 GLdouble)
     rasterPos' (Vertex2 360 300)
     renderString Helvetica18 "Reflecto"
+    rasterPos' (Vertex2 345 170)
+    renderString' "Press Space"
     swapBuffers
 
 displayMenu gstate = do
@@ -61,6 +63,8 @@ displayWin gstate = do
     color (Color3 1 1 1 :: Color3 GLdouble)
     rasterPos' (Vertex2 360 300)
     renderString Helvetica18 "Victory"
+    rasterPos' (Vertex2 345 170)
+    renderString' "Press Space"
     swapBuffers
 
 displayPlay gstate = do
