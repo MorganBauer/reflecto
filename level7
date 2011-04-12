@@ -1,4 +1,4 @@
-Start { xPos = 10, yPos =  9, orientation = East }
+Start { xPos = 13, yPos = 10, orientation = South }
 Door { xPos = 12, yPos = 4 , orientation = South, defaultClosed = True, closed = True, group = Blue}
 Sensor { xPos = 9 , yPos = 1 , active = False, groups = [Blue]}
 Sensor { xPos = 14, yPos = 8 , active = False, groups = [Blue]}

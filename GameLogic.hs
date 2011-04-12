@@ -279,9 +279,12 @@ hasActivation o = case o of
 activeUpdate p os = map (activeUpdate' (p:os)) os
 
 activeUpdate' os o = case o of
-    Plate{} -> o{active = not $ null $ filter (/= o) $ intersection (coords o) os}
-    Sensor{} -> o{active = not $ null $ filter (/= o) $ intersection (coords o) os}
+    Plate{} -> o{active = not $ null $ filter condition $ intersection (coords o) os}
+    Sensor{} -> o{active = not $ null $ filter condition $ intersection (coords o) os}
     _ -> o
+  where condition a = a /= o && case a of
+                        Start{} -> False
+                        _ -> True
 
 edgeShape :: GObject -> (GLdouble, GLdouble) -> Orientation -> GLdouble 
 edgeShape ob (x,y) or = case ob of
@@ -424,6 +427,24 @@ findTarget os (i:is) = case filter (\x -> targetp x && i == coords x) os of
             ts -> ts
 findTarget os [] = []
 
+efficientFindTarget [] _ _ targs = targs
+efficientFindTarget (o:os) orientation (x,y) [] = if sees (coords o) orientation (x,y) 1000 
+    then efficientFindTarget os orientation (x,y) [o]
+    else efficientFindTarget os orientation (x,y) []
+efficientFindTarget (o:os) orientation (x,y) (t:targs) = if sees (coords o) orientation (x,y) (max (abs (y - snd (coords t))) (abs (x - fst (coords t))))
+    then efficientFindTarget os orientation (x,y) (if coords o == coords t then (o:t:targs) else [o])
+    else efficientFindTarget os orientation (x,y) (t:targs)
+
+sees (x',y') orientation (x,y) d = case orientation of
+    North -> x' == x && y'-y <= d && y'-y > 0
+    South -> x' == x && y-y' <= d && y-y' > 0
+    East -> y' == y && x'-x <= d && x'-x > 0
+    West -> y' == y && x-x' <= d && x-x' > 0
+    Northeast -> x'-x == y'-y && y'-y <= d && y'-y > 0
+    Northwest -> x-x' == y'-y && y'-y <= d && y'-y > 0
+    Southeast -> x'-x == y-y' && y-y' <= d && y-y' > 0
+    Southwest -> x-x' == y-y' && y-y' <= d && y-y' > 0
+
 makeBeams [] = []
 makeBeams (o:os) = case o of
     Diode{xPos=x,yPos=y,orientation=od} -> o : 
@@ -441,7 +462,7 @@ isBeam o = case o of
 
 updateBeam os b = case b of
     Beam{xPos=x,yPos=y,orientation=o} -> b{target=ts,sightLength=getSL}
-        where ts = findTarget os (viewCheckList' b)
+        where ts = efficientFindTarget (filter targetp os) o (coords b) []
               getSL = case ts of
                 [] -> 1000
                 --FIXME: this is not necessarily correct...

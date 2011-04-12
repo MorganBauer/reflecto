@@ -5,8 +5,5 @@
 ,(Vertex2 50 410, "across the top of the map")
 ,(Vertex2 50 310, "Puzzles like this will continue to get")
 ,(Vertex2 50 290, "increasingly difficult")
-,(Vertex2 25 150, "Solution: Reflect the mirror once from")
-,(Vertex2 25 130, "above so that it is at the top of the map")
-,(Vertex2 25 110, "and then reflect it once more")
-,(Vertex2 25  90, "to the right to finish the puzzle")
+,(Vertex2 50 190, "This concludes the tutorial.")
 ]
