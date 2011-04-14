@@ -23,6 +23,7 @@ data GameState = GameState { player :: IORef GObject
                            , levelh :: IORef [(Vertex2 GLint,String)]
                            , phase :: IORef GamePhase
                            , cursorPos :: IORef Integer
+                           , cursorLevel :: IORef Integer
                            }
 
 
@@ -32,7 +33,9 @@ data Keyboard = Keyboard { wKey
                          , sKey
                          , sKey'
                          , aKey
+                         , aKey'
                          , dKey
+                         , dKey'
                          , qKey
                          , qKey'
                          , eKey
@@ -52,7 +55,9 @@ initState = do
             , sKey   = Up
             , sKey'  = Up
             , aKey   = Up
+            , aKey'  = Up
             , dKey   = Up
+            , dKey'  = Up
             , qKey   = Up
             , qKey'  = Up
             , eKey   = Up
@@ -83,6 +88,7 @@ initState = do
                     }
     os <- newIORef objs
     lvl <- newIORef l
+    clvl <- newIORef l
     helps <- newIORef h
     phz <- newIORef Title
     crs <- newIORef 1
@@ -94,6 +100,7 @@ initState = do
             , levelh = helps
             , phase = phz
             , cursorPos = crs
+            , cursorLevel = clvl
             }
 
 readHelp :: String -> IO ([(Vertex2 GLint,String)])
