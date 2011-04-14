@@ -36,6 +36,7 @@ displayTitle gstate = do
 
 displayMenu gstate = do
     curs <- get $ cursorPos gstate
+    l <- get $ cursorLevel gstate
     let curs' = bound curs
     color (Color3 0 0.1 0.4 :: Color3 GLdouble)
     renderPrimitive Polygon $ mapM_ vertex fullScreenRectangle
@@ -53,9 +54,11 @@ displayMenu gstate = do
     rasterPos' (Vertex2 300 350)
     renderString' "New Game"
     rasterPos' (Vertex2 300 300)
+    renderString' $ "Go to level: " ++ show l
+    rasterPos' (Vertex2 300 250)
     renderString' "Quit"
     swapBuffers
-  where bound a = if a < 1 then 1 else if a > 3 then 3 else a
+  where bound a = if a < 1 then 1 else if a > 4 then 4 else a
 
 displayWin gstate = do
     color (Color3 0 0.1 0.4 :: Color3 GLdouble)
@@ -320,7 +323,7 @@ renderPlate Plate{xPos=x,yPos=y,active=a,groups=gs} = do
         translate (Vector3 x y 0)
         if a 
           then color (Color3 0   0.6 0 :: Color3 GLdouble)
-          else color (Color3 0.5 0.3 0 :: Color3 GLdouble)
+          else color (Color3 0.25 0.1 0 :: Color3 GLdouble)
         renderPrimitive Polygon $ mapM_ vertex plateShape
         renderBorder gs (length gs)
 
@@ -385,7 +388,7 @@ renderDiode Diode{xPos=x,yPos=y,orientation=o} = do
         color (Color3 1.0 0.7 0 :: Color3 GLdouble)
         renderPrimitive Lines $ do
             vertex (Vertex2 0 0 :: Vertex2 GLdouble)
-            vertex (Vertex2 0 (pixelsPerSquare / sqrt 2)::Vertex2 GLdouble)
+            vertex (Vertex2 0 (if o `elem` [North,South,East,West] then pixelsPerSquare / 2 else pixelsPerSquare / sqrt 2)::Vertex2 GLdouble)
 
 diodeShape :: [Vertex2 GLdouble]
 diodeShape = [Vertex2 (-pixelsPerSquare/2) ( pixelsPerSquare*e)

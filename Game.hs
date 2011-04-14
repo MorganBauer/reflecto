@@ -42,67 +42,99 @@ stepTime = 16
 timer :: GameState -> TimerCallback
 timer gstate = do
     phz <- (get . phase) gstate
+    case phz of
+        Play -> playMode gstate
+        Title -> titleMode gstate
+        Menu -> menuMode gstate
+        Win -> winMode gstate
+
+playMode gstate = do
     k <- (get . keyboard) gstate
     p <- (get . player) gstate
     os <- (get . objects) gstate
-    case phz of
-        Play -> do
-            player gstate $~ (updatePlayer k os)
-            reflecto gstate
-            pushing gstate
-            objects gstate $~ map moveUpdate
-            objects gstate $~ fillPits
-            objects gstate $~ filter (not . isBeam)
-            objects gstate $~ makeBeams
-            objects gstate $~ beamExtend
-            objects gstate $~ activeUpdate p
-            objects gstate $~ doorUpdate
-            keyboard gstate $~ (\k@(Keyboard{space=s}) -> k{space'=s})
-            keyboard gstate $~ (\k@(Keyboard{qKey=q}) -> k{qKey'=q})
-            keyboard gstate $~ (\k@(Keyboard{eKey=e}) -> k{eKey'=e})
-            keyboard gstate $~ (\k@(Keyboard{wKey=w}) -> k{wKey'=w})
-            keyboard gstate $~ (\k@(Keyboard{sKey=s}) -> k{sKey'=s})
-            updateLevel gstate
-            postRedisplay Nothing
-            if esc k == Down then phase gstate $= Menu else return ()
-            addTimerCallback stepTime $ timer gstate
-        Title -> do
-            if space k == Down && space' k == Up then phase gstate $= Play else return ()
-            keyboard gstate $~ (\k@(Keyboard{space=s}) -> k{space'=s})
-            postRedisplay Nothing
-            addTimerCallback stepTime $ timer gstate
-        Menu -> do
-            if wKey k == Down && wKey' k == Up then cursorPos gstate $~ (\x -> if x < 2 then 1 else x-1) else return () 
-            if sKey k == Down && sKey' k == Up then cursorPos gstate $~ (\x -> if x > 2 then 3 else x+1) else return () 
-            if space k == Down then do
-                cpos <- get $ cursorPos gstate
-                case cpos of
-                    1 -> do 
-                        phase gstate $= Play
-                        keyboard gstate $~ (\k -> k{space=Up,space'=Up})
-                    2 -> do
-                        phase gstate $= Play
-                        level gstate $= 1
-                        cursorPos gstate $= 1
-                        rawObjs <- readLevel "level1"
-                        h <- readHelp "level1h"
-                        let objs = map reposition rawObjs
-                            start = head $ filter isStart objs
-                        objects gstate $= objs
-                        levelh gstate $= h
-                        player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
-                    3 -> exitWith ExitSuccess
-                    _ -> return ()
-              else return ()
-            keyboard gstate $~ (\k@(Keyboard{wKey=w}) -> k{wKey'=w})
-            keyboard gstate $~ (\k@(Keyboard{sKey=s}) -> k{sKey'=s})
-            postRedisplay Nothing
-            addTimerCallback stepTime $ timer gstate
-        Win -> do
-            if space k == Down then phase gstate $= Title else return ()
-            keyboard gstate $~ (\k@(Keyboard{space=s}) -> k{space'=s})
-            postRedisplay Nothing
-            addTimerCallback stepTime $ timer gstate
+    player gstate $~ (updatePlayer k os)
+    reflecto gstate
+    pushing gstate
+    objects gstate $~ map moveUpdate
+    objects gstate $~ fillPits
+    objects gstate $~ filter (not . isBeam)
+    objects gstate $~ makeBeams
+    objects gstate $~ beamExtend
+    objects gstate $~ activeUpdate p
+    objects gstate $~ doorUpdate
+    keyboard gstate $~ (\k@(Keyboard{space=s}) -> k{space'=s})
+    keyboard gstate $~ (\k@(Keyboard{qKey=q}) -> k{qKey'=q})
+    keyboard gstate $~ (\k@(Keyboard{eKey=e}) -> k{eKey'=e})
+    keyboard gstate $~ (\k@(Keyboard{wKey=w}) -> k{wKey'=w})
+    keyboard gstate $~ (\k@(Keyboard{sKey=s}) -> k{sKey'=s})
+    keyboard gstate $~ (\k@(Keyboard{aKey=a}) -> k{aKey'=a})
+    keyboard gstate $~ (\k@(Keyboard{dKey=d}) -> k{dKey'=d})
+    updateLevel gstate
+    postRedisplay Nothing
+    if esc k == Down then phase gstate $= Menu else return ()
+    addTimerCallback stepTime $ timer gstate
+
+titleMode gstate = do
+    k <- (get . keyboard) gstate
+    if space k == Down && space' k == Up then phase gstate $= Play else return ()
+    keyboard gstate $~ (\k@(Keyboard{space=s}) -> k{space'=s})
+    postRedisplay Nothing
+    addTimerCallback stepTime $ timer gstate
+
+menuMode gstate = do
+    k <- (get . keyboard) gstate
+    cursor <- (get . cursorPos) gstate
+    clvl <- (get . cursorLevel) gstate
+    low <- doesFileExist $ "level" ++ show (clvl-1)
+    high <- doesFileExist $ "level" ++ show (clvl+1)
+    if wKey k == Down && wKey' k == Up then cursorPos gstate $~ (\x -> if x < 2 then 1 else x-1) else return () 
+    if sKey k == Down && sKey' k == Up then cursorPos gstate $~ (\x -> if x > 3 then 4 else x+1) else return () 
+    if aKey k == Down && aKey' k == Up && low && cursor == 3 then cursorLevel gstate $~ pred else return ()
+    if dKey k == Down && dKey' k == Up && high && cursor == 3 then cursorLevel gstate $~ succ else return ()
+    if space k == Down then do
+        cpos <- get $ cursorPos gstate
+        case cpos of
+            1 -> do 
+                phase gstate $= Play
+            2 -> do
+                phase gstate $= Play
+                level gstate $= 1
+                cursorPos gstate $= 1
+                rawObjs <- readLevel "level1"
+                h <- readHelp "level1h"
+                let objs = map reposition rawObjs
+                    start = head $ filter isStart objs
+                objects gstate $= objs
+                levelh gstate $= h
+                player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
+            3 -> do
+                phase gstate $= Play
+                level gstate $= clvl
+                cursorPos gstate $= 1
+                rawObjs <- readLevel $ "level" ++ show clvl
+                h <- readHelp $ "level" ++ show clvl ++ "h"
+                let objs = map reposition rawObjs
+                    start = head $ filter isStart objs
+                objects gstate $= objs
+                levelh gstate $= h
+                player gstate $~ (\p -> p{xPos = xPos start ,yPos = yPos start ,orientation = orientation start})
+            4 -> exitWith ExitSuccess
+            _ -> return ()
+      else return ()
+    keyboard gstate $~ (\k -> k{space=Up,space'=Up})
+    keyboard gstate $~ (\k@(Keyboard{wKey=w}) -> k{wKey'=w})
+    keyboard gstate $~ (\k@(Keyboard{sKey=s}) -> k{sKey'=s})
+    keyboard gstate $~ (\k@(Keyboard{aKey=a}) -> k{aKey'=a})
+    keyboard gstate $~ (\k@(Keyboard{dKey=d}) -> k{dKey'=d})
+    postRedisplay Nothing
+    addTimerCallback stepTime $ timer gstate
+
+winMode gstate = do
+    k <- (get . keyboard) gstate
+    if space k == Down then phase gstate $= Title else return ()
+    keyboard gstate $~ (\k@(Keyboard{space=s}) -> k{space'=s})
+    postRedisplay Nothing
+    addTimerCallback stepTime $ timer gstate
 
 updatePlayer :: Keyboard -> [GObject] -> GObject -> GObject
 updatePlayer k os p = p{ xPos = x
@@ -126,7 +158,7 @@ updatePlayer k os p = p{ xPos = x
         t = findTarget os (f p{xPos=x,yPos=y,orientation=o})
         f = if (x,y) == gridToFree (freeToGrid (x,y)) then viewCheckList' else viewCheckList
         getSL = case t of
-            --FIXME: this is not necessarily correct...
+            --Declared fixed. All contours follow grid.
             (ob:obs) -> edgeShape ob (x,y) o
             [] -> 1000
         o = if and [qKey k == Down, qKey' k == Up, eKey k == Up] then cclockwise (orientation p) else
