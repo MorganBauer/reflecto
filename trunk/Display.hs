@@ -233,18 +233,43 @@ renderRoller Roller {xVis=x, yVis=y, orientation=o, reflected=r} = do
         rotate (toAngle o) (Vector3 0 0 1)
         rotate (toReflect r) (Vector3 0 1 0)
         color (Color3 0.7 0.7 0.0 :: Color3 GLdouble)
+        renderPrimitive Triangles $ mapM_ vertex rollerEdge
+        color (Color3 0.4 0.4 0.0 :: Color3 GLdouble)
         renderPrimitive Polygon $ mapM_ vertex rollerShape
+        color (Color3 0.8 0.8 0.8 :: Color3 GLdouble)
+        renderPrimitive Lines $ mapM_ vertex rollerArrows
 renderRoller x = error $ "Attempted to render non-roller as a roller:\n" ++ show x
 
-rollerShape :: [Vertex2 GLdouble]
-rollerShape = [Vertex2 (-pixelsPerSquare/2) 0
-              ,Vertex2 (-pixelsPerSquare/3) (pixelsPerSquare/3)
-              ,Vertex2 ( pixelsPerSquare/3) (pixelsPerSquare/3)
-              ,Vertex2 ( pixelsPerSquare/2) 0
-              ,Vertex2 ( pixelsPerSquare/3) (-pixelsPerSquare/3)
-              ,Vertex2 (-pixelsPerSquare/3) (-pixelsPerSquare/3)
-              ]
+rollerArrows :: [Vertex2 GLdouble]
+rollerArrows = [Vertex2 0 (-pixelsPerSquare/3)
+               ,Vertex2 0 (-pixelsPerSquare/20)
+               ,Vertex2 (-7 ) (-pixelsPerSquare/3+7 )
+               ,Vertex2 0 (-pixelsPerSquare/3)
+               ,Vertex2 ( 7 ) (-pixelsPerSquare/3+7 )
+               ,Vertex2 0 (-pixelsPerSquare/3)
+               ,Vertex2 0 ( pixelsPerSquare/3)
+               ,Vertex2 0 ( pixelsPerSquare/20)
+               ,Vertex2 (-7 ) ( pixelsPerSquare/3-7 )
+               ,Vertex2 0 ( pixelsPerSquare/3)
+               ,Vertex2 ( 7 ) ( pixelsPerSquare/3-7 )
+               ,Vertex2 0 ( pixelsPerSquare/3)
+               ]
 
+rollerEdge :: [Vertex2 GLdouble]
+rollerEdge = [Vertex2 (-pixelsPerSquare/2) 0
+             ,Vertex2 (-pixelsPerSquare/3) (pixelsPerSquare/3)
+             ,Vertex2 (-pixelsPerSquare/3) (-pixelsPerSquare/3)
+             ,Vertex2 ( pixelsPerSquare/2) 0
+             ,Vertex2 ( pixelsPerSquare/3) (-pixelsPerSquare/3)
+             ,Vertex2 ( pixelsPerSquare/3) (pixelsPerSquare/3)
+             ]
+
+rollerShape :: [Vertex2 GLdouble]
+rollerShape =[Vertex2 (-pixelsPerSquare/3) (pixelsPerSquare/3)
+             ,Vertex2 ( pixelsPerSquare/3) (pixelsPerSquare/3)
+             ,Vertex2 ( pixelsPerSquare/3) (-pixelsPerSquare/3)
+             ,Vertex2 (-pixelsPerSquare/3) (-pixelsPerSquare/3)
+             ]
 renderWall Wall{xPos=x,yPos=y} = do
     preservingMatrix $ do
         translate (Vector3 x y 0)
@@ -383,7 +408,7 @@ renderDiode Diode{xPos=x,yPos=y,orientation=o} = do
     preservingMatrix $ do
         translate (Vector3 x y 0)
         rotate (toAngle o) (Vector3 0 0 1)
-        color (Color3 0.1 0.1 0.1 :: Color3 GLdouble)
+        color (Color3 0.4 0.4 0.4 :: Color3 GLdouble)
         renderPrimitive Polygon $ mapM_ vertex diodeShape
         color (Color3 1.0 0.7 0 :: Color3 GLdouble)
         renderPrimitive Lines $ do
@@ -391,12 +416,8 @@ renderDiode Diode{xPos=x,yPos=y,orientation=o} = do
             vertex (Vertex2 0 (if o `elem` [North,South,East,West] then pixelsPerSquare / 2 else pixelsPerSquare / sqrt 2)::Vertex2 GLdouble)
 
 diodeShape :: [Vertex2 GLdouble]
-diodeShape = [Vertex2 (-pixelsPerSquare/2) ( pixelsPerSquare*e)
-             ,Vertex2 (-pixelsPerSquare/2) (-pixelsPerSquare*e)
-             ,Vertex2 (-pixelsPerSquare*e) (-pixelsPerSquare/2)
+diodeShape = [Vertex2 (-pixelsPerSquare*e) (-pixelsPerSquare/2)
              ,Vertex2 ( pixelsPerSquare*e) (-pixelsPerSquare/2)
-             ,Vertex2 ( pixelsPerSquare/2) (-pixelsPerSquare*e)
-             ,Vertex2 ( pixelsPerSquare/2) ( pixelsPerSquare*e)
              ,Vertex2 ( pixelsPerSquare*e) ( pixelsPerSquare/2)
              ,Vertex2 (-pixelsPerSquare*e) ( pixelsPerSquare/2)
              ]
